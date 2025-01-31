@@ -45,6 +45,7 @@ po/*~
 # RStudio Connect folder
 rsconnect/
 
+# Professor Reccomended Entries
 /.quarto/
 **/.quarto/*
 .Rproj.user

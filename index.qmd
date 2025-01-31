@@ -1,13 +1,17 @@
 ---
-title: "YOUR TITLE GOES HERE"
+title: "Minimum Viable Blog"
+listing:
+    contents: posts
+    sort: "date desc"
+    type: default
 ---
 
 
 
-----------------------------------------------------------------
+---
 
 ```{r}
 #| echo: false
-time_vec <- c("Last Updated:", format(Sys.time(), "%A %m %d, %Y at %H:%M%p"))
+time_vec <- c("Last Updated:", format(Sys.time(), "%Y-%m-%d at %H:%M%p"))
 cat(paste(time_vec," "))
 ```
