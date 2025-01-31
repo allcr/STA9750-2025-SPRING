@@ -1,3 +1,9 @@
 ---
 title: "YOUR TITLE GOES HERE"
 ---
+
+
+
+----------------------------------------------------------------
+
+Last Updated: `r format(Sys.time(), "%A %m %d, %Y at %H:%M%p")`

@@ -1,0 +1,9 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "YOUR TITLE GOES HERE",
+    "section": "",
+    "text": "Last Updated: r format(Sys.time(), \"%A %m %d, %Y at %H:%M%p\")"
+  }
+]
