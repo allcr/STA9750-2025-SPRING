@@ -6,4 +6,8 @@ title: "YOUR TITLE GOES HERE"
 
 ----------------------------------------------------------------
 
-Last Updated: `r format(Sys.time(), "%A %m %d, %Y at %H:%M%p")`
+```{r}
+#| echo: false
+time_vec <- c("Last Updated:", format(Sys.time(), "%A %m %d, %Y at %H:%M%p"))
+cat(paste(time_vec," "))
+```
