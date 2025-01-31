@@ -1,5 +1,14 @@
 ---
-title: "mini_project_1"
+title: "Mini Project 1"
 format: html
+draft: true
 ---
 
+
+---
+
+```{r}
+#| echo: false
+time_vec <- c("Last Updated:", format(Sys.time(), "%Y-%m-%d at %H:%M%p"))
+cat(paste(time_vec," "))
+```

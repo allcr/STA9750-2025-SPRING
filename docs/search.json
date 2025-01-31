@@ -2,15 +2,29 @@
   {
     "objectID": "about.html",
     "href": "about.html",
-    "title": "About this blog",
+    "title": "About",
     "section": "",
     "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc tincidunt a ex efficitur blandit. Curabitur non suscipit mauris. Fusce quis nulla pretium, vehicula ligula sit amet, volutpat ligula. Aenean mi neque, sollicitudin euismod suscipit eu, vulputate nec ligula. Nulla facilisi. Fusce pharetra urna ut leo pellentesque lacinia. Quisque ac sagittis dolor. Cras bibendum posuere nisi, ac mollis nulla aliquet sit amet.\nProin vitae tempor dui, et elementum urna. In volutpat ut lorem vitae convallis. Nulla facilisi. Nunc nec ipsum at nunc ornare iaculis id vitae nulla. Donec nec egestas augue, in varius ante. In ac mauris purus. Morbi a augue id massa feugiat aliquam id sit amet augue. Fusce auctor molestie est, non accumsan nisi dapibus sed. Nam eu facilisis leo, nec rutrum mi. Aenean tincidunt libero eros, quis sollicitudin risus tempus eget. Nam quis maximus lacus, quis rhoncus velit."
+  },
+  {
+    "objectID": "about.html#education",
+    "href": "about.html#education",
+    "title": "About",
+    "section": "Education",
+    "text": "Education"
+  },
+  {
+    "objectID": "about.html#experience",
+    "href": "about.html#experience",
+    "title": "About",
+    "section": "Experience",
+    "text": "Experience"
   },
   {
     "objectID": "index.html",
     "href": "index.html",
     "title": "Minimum Viable Blog",
     "section": "",
-    "text": "Last Updated:   2025-01-31 at 10:07AM  \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nmini_project_1\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nNo matching items"
+    "text": "No matching items"
   }
 ]
