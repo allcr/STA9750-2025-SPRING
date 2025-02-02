@@ -1,5 +1,5 @@
 ---
-title: "Minimum Viable Blog"
+title: "STA9750 Spring 2025 Submission Material"
 listing:
     contents: posts
     sort: "date desc"
@@ -9,3 +9,8 @@ listing:
 page-layout: full
 title-block-banner: true
 ---
+```{r}
+#| echo: false
+time_vec <- c("Last Updated:", format(Sys.time(), "%Y-%m-%d at %H:%M%p"))
+cat(paste(time_vec," "))
+```

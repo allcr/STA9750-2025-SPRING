@@ -13,3 +13,8 @@ Proin vitae tempor dui, et elementum urna. In volutpat ut lorem vitae convallis.
 
 ## Experience
 
+```{r}
+#| echo: false
+time_vec <- c("Last Updated:", format(Sys.time(), "%Y-%m-%d at %H:%M%p"))
+cat(paste(time_vec," "))
+```
