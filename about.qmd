@@ -1,17 +1,51 @@
 ---
-title: "About"
+title: "Craig Allen"
 about:
-    template: trestles 
+    template: solana 
 ---
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc tincidunt a ex efficitur blandit. Curabitur non suscipit mauris. Fusce quis nulla pretium, vehicula ligula sit amet, volutpat ligula. Aenean mi neque, sollicitudin euismod suscipit eu, vulputate nec ligula. Nulla facilisi. Fusce pharetra urna ut leo pellentesque lacinia. Quisque ac sagittis dolor. Cras bibendum posuere nisi, ac mollis nulla aliquet sit amet.
-
-Proin vitae tempor dui, et elementum urna. In volutpat ut lorem vitae convallis. Nulla facilisi. Nunc nec ipsum at nunc ornare iaculis id vitae nulla. Donec nec egestas augue, in varius ante. In ac mauris purus. Morbi a augue id massa feugiat aliquam id sit amet augue. Fusce auctor molestie est, non accumsan nisi dapibus sed. Nam eu facilisis leo, nec rutrum mi. Aenean tincidunt libero eros, quis sollicitudin risus tempus eget. Nam quis maximus lacus, quis rhoncus velit. 
-
 ## Education
+**Zicklin School of Business - Baruch College**,  New York, NY\
+M.S. in Statistics, 2024 - Current
 
+**Syracuse University**, Syracuse, NY\
+B.S. in Mathematics, 2011 - 2015
 
 ## Experience
+- Citigroup
+- FD Technologies
+- Quantitative Brokers
+- Deutsche Bank
+
+## Trivia
+#### Books I'd Reccomend 
+- The Unaccountability Machine by Dan Davies\
+- There is No Antimemetics Division by qntm\
+- This Is How You Lose the Time War by Amal El-Mohtar and Max Gladstone\
+- Shogun by James Clavell
+
+#### Currently Reading 
+Chevengur by Andrey Platonov
+
+#### Likes
+- Cult and B movies
+- Meditation
+- Reading
+- Trying to keep bonsai trees alive 
+- When my code works
+- Collecting vinyl records
+
+#### Dislikes
+- When my code doesn't work
+- Moving my vinyl records
+
+
+## Song of the Week
+
+{{< video https://www.youtube.com/watch?v=mHliXVifhEM >}} 
+
+
+
 
 ```{r}
 #| echo: false
