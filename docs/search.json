@@ -39,7 +39,11 @@
     "href": "about.html#song-of-the-week",
     "title": "Craig Allen",
     "section": "Song of the Week",
+<<<<<<< HEAD
     "text": "Song of the Week\n\n\n\nLast Updated:   2025-02-06 at 21:04PM"
+=======
+    "text": "Song of the Week\n\n\n\nLast Updated:   2025-02-06 at 21:03PM"
+>>>>>>> efd66fd753ad9408d34c9dbfad70da16ba4e34f4
   },
   {
     "objectID": "about.html#other",
@@ -53,6 +57,10 @@
     "href": "about.html#trivia",
     "title": "Craig Allen",
     "section": "Trivia",
+<<<<<<< HEAD
     "text": "Trivia\n\nBooks I’d Reccomend\n\nThe Unaccountability Machine by Dan Davies\n\nThere is No Antimemetics Division by qntm\n\nThis Is How You Lose the Time War by Amal El-Mohtar and Max Gladstone\n\nShogun by James Clavell\n\n\n\nCurrently Reading\nChevengur by Andrey Platonov\n\n\nLikes\n\nCult and B movies\nMeditation\nReading\nTrying to keep bonsai trees alive\nWhen my code works\nCollecting vinyl records\n\n\n\nDislikes\n\nWhen my code doesn’t work\nMoving my vinyl records"
+=======
+    "text": "Trivia\n\nBooks I’d Reccomend\n\nThe Unaccountability Machine by Dan Davies\n\nThere is No Antimemetics Division by qntm\n\nThis Is How You Lose the Time War by Amal El-Mohtar and Max Gladstone\n\nShogun by James Clavell\n\n\n\nCurrently Reading\nChevengur by Andrey Platonov\n\n\nLikes:\n\nCult and B movies\nMeditation\nReading\nTrying to keep bonsai trees alive\nWhen my code works\nCollecting vinyl records\n\n\n\nDislikes:\n\nWhen my code doesn’t work\nMoving my vinyl records"
+>>>>>>> efd66fd753ad9408d34c9dbfad70da16ba4e34f4
   }
 ]
