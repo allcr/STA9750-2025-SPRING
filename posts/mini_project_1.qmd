@@ -9,9 +9,9 @@ execute:
 draft: True
 ---
 
-The New York City Council passed the Adopted Budget for Fiscal Year 2025 (FY25) on July 30th, 2025. The Comission to Analyze Taxpayer Spending (henceforth, CATS) was formed as to ensure that the budget of $112.4 billion dollars was used in the most economically efficient way and reduce waste within New York City agencies. 
+The New York City Council passed the Adopted Budget for Fiscal Year 2025 (FY25) on July 30th, 2025. The Comission to Analyze Taxpayer Spending (henceforth, CATS) was formed as to ensure that the budget of \$112.4 billion dollars was used in the most economically efficient way and reduce waste within New York City agencies.
 
-The first [public outreach meeting](https://www.youtube.com/watch?v=areUGfOHkMA) of CATS was held on August 4th, 2024 so that all efficien. 
+The first [public outreach meeting](https://www.youtube.com/watch?v=areUGfOHkMA) of CATS was held on August 4th, 2024 so that all efficien.
 
 ```{r}
 if(!file.exists("data/mp01/nyc_payroll_export.csv")){
@@ -79,43 +79,37 @@ if(file.exists("data/mp01/nyc_payroll_export.csv")){
 
 
 ```
+
 It is of interest to the committee to know exactly how many employees each department has. We will ignore Total Other Pay because [while it is important, it is mysterious.](https://i.kym-cdn.com/entries/icons/original/000/053/034/thworkcover.jpg)
 
 ```{r}
-unique(ALL_DATA$agency_name)
-# Notes to self 
-#  Police department has multiple entries (caps/no caps)
-# string distance checks to see if there's anything else obvious
-# Bronx DA vs Bronx District Attorney
-# board of correction ( correct) vs (board of corrections )
-
-# We will clean the data appropriately 
-ALL_DATA <- ALL_DATA %>% mutate(agency_name=replace(agency_name,agency_name=="Police Department", "POLICE DEPARTMENT")) 
-
-ALL_DATA <- ALL_DATA %>% mutate(agency_name=replace(agency_name,agency_name=="BRONX DISTRICT ATTORNEY", "Bronx DA")) 
-# I go with the "Bronx DA" convention as the other boroughs follow that convention consistently 
 
 
-ALL_DATA <- ALL_DATA %>% mutate(agency_name=replace(agency_name,agency_name=="BOARD OF CORRECTIONS", "BOARD OF CORRECTION")) 
-# Verified online that the correct name is the BOARD OF CORRECTIONS
-# 
-# 
+# We will clean the data appropriately
+ALL_DATA <- ALL_DATA %>%
+  mutate(agency_name = replace(agency_name, agency_name == "Police Department", "POLICE DEPARTMENT")) %>%
+  mutate(agency_name = replace(agency_name, agency_name == "BRONX DISTRICT ATTORNEY", "Bronx DA")) %>%
+  mutate(agency_name = replace(agency_name, agency_name == "BOARD OF CORRECTIONS", "BOARD OF CORRECTION")) %>%
+  rename("Agency Name" = agency_name, "Last Name" = last_name, "First Name" = first_name, "Work Location (Borough)" = work_location_borough, "Title / Job Description" = title_description, "Leave Status" = leave_status_as_of_june_30)
+
+
 ALL_DATA <- ALL_DATA %>% rename("Agency Name"=agency_name,"Last Name"=last_name, "First Name"=first_name, "Work Location (Borough)" = work_location_borough , "Title / Job Description"=title_description, "Leave Status"=leave_status_as_of_june_30)
 
 
 ```
+
+We will Analyze Eric Adams
+
 ```{r}
-ALL_DATA %>% filter(`Last Name`=="ADAMS",`First Name`=="ERIC", mid_init=='L')
+eric_adams_data <- ALL_DATA %>% filter(`Last Name`=="ADAMS",`First Name`=="ERIC", mid_init=='L')
 ```
-
-
 
 ```{r}
 
 ALL_DATA %>% mutate(total_annual_pay = case_when(pay_basis=='per Hour' ~ base_salary * (regular_hours + 1.5 * ot_hours),
-                                                 pay_basis=='per Annum' ~ base_salary + total_ot_pay,
-                                                 pay_basis=='Per Day' ~ base_salary * regular_hours + 15,
-                                                 pay_basis=='Prorated Annual' ~ regular_gross_paid
+                                                 pay_basis=='per Annum' ~  base_salary + total_ot_paid,
+                                                 pay_basis=='Per Day' ~ base_salary * regular_hours / 7.5,
+                                                 pay_basis=='Prorated Annual' ~ regular_gross_paid + total_ot_paid))
                                                  
                                             
                                                  
@@ -130,8 +124,7 @@ basic_bar_chart_data<-ALL_DATA %>% group_by(`Agency Name`) %>% tally(sort=TRUE)
 
 ```
 
-asdfasdfasdf
----
+## asdfasdfasdf
 
 ```{r}
 #| output: true
