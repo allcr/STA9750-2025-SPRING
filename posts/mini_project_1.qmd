@@ -1,15 +1,140 @@
 ---
-title: "Mini Project 1"
-format: html
-draft: False
+title: "Memorandum the Commission to Analyze Taxpayer Spending (Mini Project 1)"
+format: 
+  html: 
+    code-fold: true
+execute:
+  echo: false
+  output: false
+draft: True
 ---
 
-to be built
+The New York City Council passed the Adopted Budget for Fiscal Year 2025 (FY25) on July 30th, 2025. The Comission to Analyze Taxpayer Spending (henceforth, CATS) was formed as to ensure that the budget of $112.4 billion dollars was used in the most economically efficient way and reduce waste within New York City agencies. 
 
+The first [public outreach meeting](https://www.youtube.com/watch?v=areUGfOHkMA) of CATS was held on August 4th, 2024 so that all efficien. 
+
+```{r}
+if(!file.exists("data/mp01/nyc_payroll_export.csv")){
+    dir.create("data/mp01", showWarnings=FALSE, recursive=TRUE)
+    
+    ENDPOINT <- "https://data.cityofnewyork.us/resource/k397-673e.json"
+    
+    if(!require("httr2")) install.packages("httr2")
+    library(httr2)
+    
+    if(!require("jsonlite")) install.packages("jsonlite")
+    library(jsonlite)
+    
+    if(!require("dplyr")) install.packages("dplyr")
+    library(dplyr)
+    
+    if(!require("readr")) install.packages("readr")
+    library(readr)
+    
+    BATCH_SIZE <- 50000
+    OFFSET     <- 0
+    END_OF_EXPORT <- FALSE
+    ALL_DATA <- list()
+    
+    while(!END_OF_EXPORT){
+        cat("Requesting items", OFFSET, "to", BATCH_SIZE + OFFSET, "\n")
+        
+        req <- request(ENDPOINT) |>
+                  req_url_query(`$limit`  = BATCH_SIZE, 
+                                `$offset` = OFFSET)
+        
+        resp <- req_perform(req)
+        
+        batch_data <- fromJSON(resp_body_string(resp))
+        
+        ALL_DATA <- c(ALL_DATA, list(batch_data))
+        
+        if(NROW(batch_data) != BATCH_SIZE){
+            END_OF_EXPORT <- TRUE
+            
+            cat("End of Data Export Reached\n")
+        } else {
+            OFFSET <- OFFSET + BATCH_SIZE
+        }
+    }
+    
+    ALL_DATA <- bind_rows(ALL_DATA)
+    
+    cat("Data export complete:", NROW(ALL_DATA), "rows and", NCOL(ALL_DATA), "columns.")
+    
+    write_csv(ALL_DATA, "data/mp01/nyc_payroll_export.csv")
+}
+
+if(file.exists("data/mp01/nyc_payroll_export.csv")){
+      
+    if(!require("dplyr")) install.packages("dplyr")
+    library(dplyr)
+    
+    if(!require("readr")) install.packages("readr")
+    library(readr)
+
+  # TODO Add sane file checks other than existsence
+  ALL_DATA <- read_csv("data/mp01/nyc_payroll_export.csv")
+}
+
+
+```
+It is of interest to the committee to know exactly how many employees each department has. We will ignore Total Other Pay because [while it is important, it is mysterious.](https://i.kym-cdn.com/entries/icons/original/000/053/034/thworkcover.jpg)
+
+```{r}
+unique(ALL_DATA$agency_name)
+# Notes to self 
+#  Police department has multiple entries (caps/no caps)
+# string distance checks to see if there's anything else obvious
+# Bronx DA vs Bronx District Attorney
+# board of correction ( correct) vs (board of corrections )
+
+# We will clean the data appropriately 
+ALL_DATA <- ALL_DATA %>% mutate(agency_name=replace(agency_name,agency_name=="Police Department", "POLICE DEPARTMENT")) 
+
+ALL_DATA <- ALL_DATA %>% mutate(agency_name=replace(agency_name,agency_name=="BRONX DISTRICT ATTORNEY", "Bronx DA")) 
+# I go with the "Bronx DA" convention as the other boroughs follow that convention consistently 
+
+
+ALL_DATA <- ALL_DATA %>% mutate(agency_name=replace(agency_name,agency_name=="BOARD OF CORRECTIONS", "BOARD OF CORRECTION")) 
+# Verified online that the correct name is the BOARD OF CORRECTIONS
+# 
+# 
+ALL_DATA <- ALL_DATA %>% rename("Agency Name"=agency_name,"Last Name"=last_name, "First Name"=first_name, "Work Location (Borough)" = work_location_borough , "Title / Job Description"=title_description, "Leave Status"=leave_status_as_of_june_30)
+
+
+```
+```{r}
+ALL_DATA %>% filter(`Last Name`=="ADAMS",`First Name`=="ERIC", mid_init=='L')
+```
+
+
+
+```{r}
+
+ALL_DATA %>% mutate(total_annual_pay = case_when(pay_basis=='per Hour' ~ base_salary * (regular_hours + 1.5 * ot_hours),
+                                                 pay_basis=='per Annum' ~ base_salary + total_ot_pay,
+                                                 pay_basis=='Per Day' ~ base_salary * regular_hours + 15,
+                                                 pay_basis=='Prorated Annual' ~ regular_gross_paid
+                                                 
+                                            
+                                                 
+                    
+
+```
+
+```{r}
+library(ggplot2)
+basic_bar_chart_data<-ALL_DATA %>% group_by(`Agency Name`) %>% tally(sort=TRUE)
+
+
+```
+
+asdfasdfasdf
 ---
 
 ```{r}
-#| echo: false
+#| output: true
 time_vec <- c("Last Updated:", format(Sys.time(), "%Y-%m-%d at %H:%M%p"))
 cat(paste(time_vec," "))
 ```
