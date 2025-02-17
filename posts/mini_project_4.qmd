@@ -1,4 +1,11 @@
 ---
 title: "mini_project_4"
+format: 
+  html: 
+    code-fold: true
+execute:
+  echo: false
+  output: false
+draft: True
 ---
 
