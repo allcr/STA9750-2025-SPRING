@@ -31,6 +31,13 @@ if(!file.exists("data/mp01/nyc_payroll_export.csv")){
     if(!require("readr")) install.packages("readr")
     library(readr)
     
+    if(!require("ggplot2")) install.packages("ggplot2")
+    library(readr)
+    
+    if(!require("scales")) install.packages("scales")
+    library(scales)
+    
+    
     BATCH_SIZE <- 50000
     OFFSET     <- 0
     END_OF_EXPORT <- FALSE
@@ -72,6 +79,13 @@ if(file.exists("data/mp01/nyc_payroll_export.csv")){
     
     if(!require("readr")) install.packages("readr")
     library(readr)
+    
+    if(!require("ggplot2")) install.packages("ggplot2")
+    library(ggplot2)
+      
+    if(!require("scales")) install.packages("scales")
+    library(scales)
+    
 
   # TODO Add sane file checks other than existsence
   ALL_DATA <- read_csv("data/mp01/nyc_payroll_export.csv")
@@ -90,38 +104,43 @@ ALL_DATA <- ALL_DATA %>%
   mutate(agency_name = replace(agency_name, agency_name == "Police Department", "POLICE DEPARTMENT")) %>%
   mutate(agency_name = replace(agency_name, agency_name == "BRONX DISTRICT ATTORNEY", "Bronx DA")) %>%
   mutate(agency_name = replace(agency_name, agency_name == "BOARD OF CORRECTIONS", "BOARD OF CORRECTION")) %>%
-  rename("Agency Name" = agency_name, "Last Name" = last_name, "First Name" = first_name, "Work Location (Borough)" = work_location_borough, "Title / Job Description" = title_description, "Leave Status" = leave_status_as_of_june_30)
-
-
-ALL_DATA <- ALL_DATA %>% rename("Agency Name"=agency_name,"Last Name"=last_name, "First Name"=first_name, "Work Location (Borough)" = work_location_borough , "Title / Job Description"=title_description, "Leave Status"=leave_status_as_of_june_30)
-
+  rename("Agency Name" = agency_name,
+         "Last Name" = last_name, 
+         "First Name" = first_name,
+         "Work Location (Borough)" = work_location_borough,
+         "Title / Job Description" = title_description, 
+         "Leave Status" = leave_status_as_of_june_30)
 
 ```
 
-We will Analyze Eric Adams
-
-```{r}
-eric_adams_data <- ALL_DATA %>% filter(`Last Name`=="ADAMS",`First Name`=="ERIC", mid_init=='L')
-```
-
+Calculate Annual Salary
 ```{r}
 
-ALL_DATA %>% mutate(total_annual_pay = case_when(pay_basis=='per Hour' ~ base_salary * (regular_hours + 1.5 * ot_hours),
-                                                 pay_basis=='per Annum' ~  base_salary + total_ot_paid,
+ALL_DATA <- ALL_DATA %>% mutate(total_annual_pay = case_when(pay_basis=='per Hour' ~ base_salary * (regular_hours + 1.5 * ot_hours),
+                                                 pay_basis=='per Annum' ~  regular_gross_paid + total_ot_paid,
                                                  pay_basis=='Per Day' ~ base_salary * regular_hours / 7.5,
                                                  pay_basis=='Prorated Annual' ~ regular_gross_paid + total_ot_paid))
                                                  
                                             
-                                                 
+                                                
+```
+
+
+Figure out what the mayor is up to 
+```{r}
                     
+eric_adams_data <- ALL_DATA %>% filter(`Last Name`=="ADAMS",`First Name`=="ERIC", mid_init=='L')
+
 
 ```
 
 ```{r}
-library(ggplot2)
-basic_bar_chart_data<-ALL_DATA %>% group_by(`Agency Name`) %>% tally(sort=TRUE)
 
 
+ead <- eric_adams_data |> group_by(fiscal_year) |> summarize(sum_salary = sum(total_annual_pay))
+
+ggplot(ead, mapping=aes(x=fiscal_year, y=sum_salary)) + geom_bar(stat='identity') + scale_y_continuous(name="Annual Salary of Eric Adams", labels=label_currency(scale_cut= cut_short_scale()),
+                                                                breaks = scales::pretty_breaks(n = 6)) + scale_x_continuous(name="Fiscal Year", breaks = scales::pretty_breaks(n=10))
 ```
 
 ## asdfasdfasdf
