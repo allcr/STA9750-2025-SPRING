@@ -141,8 +141,8 @@ ALL_DATA <- ALL_DATA %>% mutate(total_annual_pay = case_when(pay_basis=='per Hou
 
 ```{r}
 
-annual_pay_vector <- ALL_DATA |> select(total_annual_pay)|> filter(!is.na(total_annual_pay)) 
-ggplot(annual_pay_vector, aes(x=total_annual_pay)) + geom_histogram(bins=5) 
+#annual_pay_vector <- ALL_DATA |> select(total_annual_pay)|> filter(!is.na(total_annual_pay)) 
+#ggplot(annual_pay_vector, aes(x=total_annual_pay)) + geom_histogram(bins=5) 
 
 ```
 
