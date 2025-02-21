@@ -13,15 +13,6 @@ The New York City Council passed the Adopted Budget for Fiscal Year 2025 (FY25) 
 
 The first [public outreach meeting](https://www.youtube.com/watch?v=areUGfOHkMA) of CATS was held on August 4th, 2024. 
 
-1. Isolate and correct for salary outliers
-  - see what some of the errors are 
-2. clean those errors
-  - winsorization
-3. perform the required asks on the website
-4. ask what if we got rid of bonuses and increased everyone's salary by the median bonus value for their job title
-5. Ask that one geologist if they want to be in a group Jocely Lopez 
-6. dtpylr look into it 
-
 ```{r}
 if(!file.exists("data/mp01/nyc_payroll_export.csv")){
     dir.create("data/mp01", showWarnings=FALSE, recursive=TRUE)
