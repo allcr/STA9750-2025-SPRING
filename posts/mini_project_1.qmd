@@ -80,9 +80,7 @@ if(!file.exists("data/mp01/nyc_payroll_export.csv")){
     cat("Data export complete:", NROW(ALL_DATA), "rows and", NCOL(ALL_DATA), "columns.")
     
     write_csv(ALL_DATA, "data/mp01/nyc_payroll_export.csv")
-}
-
-if(file.exists("data/mp01/nyc_payroll_export.csv")){
+} else if (file.exists("data/mp01/nyc_payroll_export.csv")) {
       
     if(!require("dplyr")) install.packages("dplyr")
     library(dplyr)
@@ -99,6 +97,7 @@ if(file.exists("data/mp01/nyc_payroll_export.csv")){
 
   # TODO Add sane file checks other than existsence
   ALL_DATA <- read_csv("data/mp01/nyc_payroll_export.csv")
+
 }
 
 
@@ -126,13 +125,14 @@ ALL_DATA <- ALL_DATA %>%
 
 
 
-Calculate Annual Salary
+Calculate Annualized Base Salary and Gross Annual Pay
 ```{r}
 
-ALL_DATA <- ALL_DATA %>% mutate(total_annual_pay = case_when(pay_basis=='per Hour' ~ base_salary * (regular_hours + 1.5 * ot_hours),
-                                                 pay_basis=='per Annum' ~  regular_gross_paid + total_ot_paid,
+cleaned <- ALL_DATA |> mutate(base_annual_pay = case_when(pay_basis=='per Hour' ~ base_salary * (regular_hours + 1.5 * ot_hours),
+                                                 pay_basis=='per Annum' ~  base_salary,
                                                  pay_basis=='Per Day' ~ base_salary * regular_hours / 7.5,
-                                                 pay_basis=='Prorated Annual' ~ regular_gross_paid + total_ot_paid))
+                                                 pay_basis=='Prorated Annual' ~ base_salary),
+                              gross_annual_pay = regular_gross_paid + total_ot_paid + total_other_pay) |> filter(gross_annual_pay > 0)
                                                  
                                             
                                                 
@@ -141,16 +141,16 @@ ALL_DATA <- ALL_DATA %>% mutate(total_annual_pay = case_when(pay_basis=='per Hou
 
 ```{r}
 
-#annual_pay_vector <- ALL_DATA |> select(total_annual_pay)|> filter(!is.na(total_annual_pay)) 
-#ggplot(annual_pay_vector, aes(x=total_annual_pay)) + geom_histogram(bins=5) 
-
+# annual_pay_vector <- ALL_DATA |> select(total_annual_pay)|> filter(!is.na(total_annual_pay)) 
+# ggplot(annual_pay_vector, aes(x=total_annual_pay)) + geom_histogram(bins=5) 
+# save it to a 
 ```
 
 
 Figure out what the mayor is up to 
 ```{r}
                     
-eric_adams_data <- ALL_DATA %>% filter(`Last Name`=="ADAMS",`First Name`=="ERIC", mid_init=='L')
+eric_adams_data <- cleaned |> filter(`Last Name`=="ADAMS",`First Name`=="ERIC", mid_init=='L')
 
 
 ```
@@ -158,12 +158,24 @@ eric_adams_data <- ALL_DATA %>% filter(`Last Name`=="ADAMS",`First Name`=="ERIC"
 ```{r}
 
 
-ead <- eric_adams_data |> group_by(fiscal_year) |> summarize(sum_salary = sum(total_annual_pay))
+ead <- eric_adams_data |> group_by(fiscal_year) |> summarize(sum_salary = sum(gross_annual_pay))
 
 ggplot(ead, mapping=aes(x=fiscal_year, y=sum_salary)) + geom_bar(stat='identity') + scale_y_continuous(name="Annual Salary of Eric Adams", labels=label_currency(scale_cut= cut_short_scale()),
                                                                 breaks = scales::pretty_breaks(n = 6)) + scale_x_continuous(name="Fiscal Year", breaks = scales::pretty_breaks(n=10))
 ```
 
+
+### Which Job Title has the highest base rate of pay? 
+ We have determined that the for the most recent financial year, the Chancellor 
+ 
+
+ 
+ 
+The highest base rate annualized salary was for the Chair of the NYC Housing Authoritity. Their pay was the highest base pay recorded for three years in a row at $414,707. 
+ 
+```{r}
+cleaned |> group_by(fiscal_year,`Agency Name`, `Title / Job Description`) |> summarize(avg_base=mean(base_annual_pay))  |> ungroup() |> slice_max(order_by=avg_base,n=1) |>  arrange(fiscal_year) 
+```
 ## asdfasdfasdf
 
 ```{r}
