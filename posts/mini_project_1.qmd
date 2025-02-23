@@ -16,7 +16,8 @@ The first [public outreach meeting](https://www.youtube.com/watch?v=areUGfOHkMA)
 
 1. Isolate and correct for salary outliers
   - see what some of the errors are 
-2. clean those errors
+      - total gross pay as per the nyc data dictionary can be negative.Filter out all fields with negative total gross pay. 
+2. clean other errors
   - winsorization
 3. perform the required asks on the website
 4. ask what if we got rid of bonuses and increased everyone's salary by the median bonus value for their job title
@@ -125,7 +126,7 @@ ALL_DATA <- ALL_DATA %>%
 
 
 
-Calculate Annualized Base Salary and Gross Annual Pay
+## Calculate Annualized Base Salary and Gross Annual Pay
 ```{r}
 
 cleaned <- ALL_DATA |> mutate(base_annual_pay = case_when(pay_basis=='per Hour' ~ base_salary * (regular_hours + 1.5 * ot_hours),
@@ -147,7 +148,7 @@ cleaned <- ALL_DATA |> mutate(base_annual_pay = case_when(pay_basis=='per Hour' 
 ```
 
 
-Figure out what the mayor is up to 
+##  Figure out what the mayor is up to 
 ```{r}
                     
 eric_adams_data <- cleaned |> filter(`Last Name`=="ADAMS",`First Name`=="ERIC", mid_init=='L')
@@ -176,7 +177,30 @@ The highest base rate annualized salary was for the Chair of the NYC Housing Aut
 ```{r}
 cleaned |> group_by(fiscal_year,`Agency Name`, `Title / Job Description`) |> summarize(avg_base=mean(base_annual_pay))  |> ungroup() |> slice_max(order_by=avg_base,n=1) |>  arrange(fiscal_year) 
 ```
-## asdfasdfasdf
+## What individual and in what year, had the highest total pay  
+```{r}
+
+cleaned |> group_by(fiscal_year) |>  slice_max(gross_annual_pay, n=1) |> select(fiscal_year, `Agency Name`, `Title / Job Description`, `Last Name`, `First Name`, mid_init, gross_annual_pay) |> arrange(desc(gross_annual_pay))
+
+```
+Mark K. Tettonis, the Chief Marine Engineer of the Department of Transportation had the highest total pay in 2024. what is surprising is how his pay is almost three times as much as the pay for the next highest record. 
+
+## Which Individual had worked the most overtime hours 
+#### Per Year
+```{r}
+
+cleaned |> group_by(fiscal_year, `Last Name`, `First Name`, mid_init) |> summarize(total_ot_hours = sum(ot_hours)) |> filter(!is.na(`Last Name`))|> ungroup(`Last Name`, `First Name`, mid_init) |>slice_max(total_ot_hours, n=1) |> mutate(total_ot_days=total_ot_hours/24)
+
+```
+This does not make sense as there is at least one year with more hours for OT than hours in one year. These are common names. MD is almost certainly short for muhammad. Are multiple people being collapsed into one "person" , am I messing with the data? the initial group by/sum on hours is supposed to be used in the case where there is a person changing jobs in one year 
+
+#### Total
+
+```{r}
+
+cleaned |> group_by(`Last Name`, `First Name`, mid_init) |> summarize(total_ot_hours = sum(ot_hours)) |>filter(!is.na(`Last Name`))|> ungroup() |> slice_max(total_ot_hours, n=1) |> mutate(total_ot_days=total_ot_hours/24)
+
+```
 
 ```{r}
 #| output: true
