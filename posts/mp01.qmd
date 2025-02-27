@@ -1,0 +1,477 @@
+---
+title: "Proposal to The Mayor of New York City from the Commission to Analyze Taxpayer Spending (Mini Project 1)"
+format: 
+  html: 
+    code-fold: true
+execute:
+  echo: false
+  output: false
+draft: False
+---
+
+# Statement
+The Commission to Analyze Taxpayer Spending has been asked to analyze several questions of interest to the Mayor's office regarding the annual budget for the City. In this document, we will present our findings. 
+
+```{r}
+if (!file.exists("data/mp01/nyc_payroll_export.csv")) {
+  dir.create("data/mp01", showWarnings = FALSE, recursive = TRUE)
+
+  ENDPOINT <- "https://data.cityofnewyork.us/resource/k397-673e.json"
+
+  if (!require("httr2")) install.packages("httr2")
+  library(httr2)
+
+  if (!require("jsonlite")) install.packages("jsonlite")
+  library(jsonlite)
+
+  if (!require("dplyr")) install.packages("dplyr")
+  library(dplyr)
+
+  if (!require("readr")) install.packages("readr")
+  library(readr)
+
+  if (!require("ggplot2")) install.packages("ggplot2")
+  library(readr)
+
+  if (!require("scales")) install.packages("scales")
+  library(scales)
+
+  if (!require("stringr")) install.packages("scales")
+  library(stringr)
+
+  if (!require("knitr")) install.packages("knitr")
+  library(knitr)
+
+
+  BATCH_SIZE <- 50000
+  OFFSET <- 0
+  END_OF_EXPORT <- FALSE
+  ALL_DATA <- list()
+
+  while (!END_OF_EXPORT) {
+    cat("Requesting items", OFFSET, "to", BATCH_SIZE + OFFSET, "\n")
+
+    req <- request(ENDPOINT) |>
+      req_url_query(
+        `$limit` = BATCH_SIZE,
+        `$offset` = OFFSET
+      )
+
+    resp <- req_perform(req)
+
+    batch_data <- fromJSON(resp_body_string(resp))
+
+    ALL_DATA <- c(ALL_DATA, list(batch_data))
+
+    if (NROW(batch_data) != BATCH_SIZE) {
+      END_OF_EXPORT <- TRUE
+
+      cat("End of Data Export Reached\n")
+    } else {
+      OFFSET <- OFFSET + BATCH_SIZE
+    }
+  }
+
+  ALL_DATA <- bind_rows(ALL_DATA)
+
+  cat("Data export complete:", NROW(ALL_DATA), "rows and", NCOL(ALL_DATA), "columns.")
+
+  write_csv(ALL_DATA, "data/mp01/nyc_payroll_export.csv")
+} else if (file.exists("data/mp01/nyc_payroll_export.csv")) {
+  if (!require("dplyr")) install.packages("dplyr")
+  library(dplyr)
+
+  if (!require("readr")) install.packages("readr")
+  library(readr)
+
+  if (!require("ggplot2")) install.packages("ggplot2")
+  library(ggplot2)
+
+  if (!require("scales")) install.packages("scales")
+  library(scales)
+
+  if (!require("stringr")) install.packages("scales")
+  library(stringr)
+
+  if (!require("knitr")) install.packages("knitr")
+  library(knitr)
+
+  ALL_DATA <- read_csv("data/mp01/nyc_payroll_export.csv")
+}
+```
+
+
+```{r}
+cleaned <- ALL_DATA |>
+  mutate(work_location_borough = replace(work_location_borough, work_location_borough == "Bronx", "BRONX")) |>
+  mutate(agency_name = replace(agency_name, agency_name == "Police Department", "POLICE DEPARTMENT")) |>
+  mutate(agency_name = replace(agency_name, agency_name == "Bronx DA", "BRONX DISTRICT ATTORNEY")) |>
+  mutate(agency_name = replace(agency_name, agency_name == "Manhattan DA", "DISTRICT ATTORNEY-MANHATTAN")) |>
+  mutate(agency_name = replace(agency_name, agency_name == "Queens DA", "ISTRICT ATTORNEY QNS COUNTY")) |>
+  mutate(agency_name = replace(agency_name, agency_name == "Kings DA", "DISTRICT ATTORNEY KINGS COUNTY")) |>
+  mutate(agency_name = replace(agency_name, agency_name == "Richmond DA", "DISTRICT ATTORNEY RICHMOND COU")) |>
+  mutate(agency_name = replace(agency_name, agency_name == "Spec Narcs-DA", "DISTRICT ATTORNEY-SPECIAL NARC")) |>
+  mutate(agency_name = replace(agency_name, agency_name == "BOARD OF CORRECTIONS", "BOARD OF CORRECTION")) |>
+  mutate(agency_name = replace(agency_name, agency_name == "PRESIDENT BOROUGH OF MANHATTAN", "BOROUGH PRESIDENT-MANHATTAN")) |>
+  mutate(agency_name = replace(agency_name, agency_name == "Police Department", "POLICE DEPARTMENT")) |>
+  mutate(aggregated_agency_name = agency_name) |>
+  mutate(aggregated_agency_name = replace(aggregated_agency_name, str_detect(agency_name, "DEPT OF ED"), "DEPARTMENT OF EDUCATION")) |>
+  mutate(aggregated_agency_name = replace(aggregated_agency_name, str_detect(agency_name, "PUBLIC ADMINISTRATOR"), "PUBLIC ADMINISTRATOR")) |>
+  mutate(aggregated_agency_name = replace(aggregated_agency_name, str_detect(agency_name, "STATEN ISLAND COMMUNITY BD"), "STATEN ISLAND COMMUNITY BD")) |>
+  mutate(aggregated_agency_name = replace(aggregated_agency_name, str_detect(agency_name, "QUEENS COMMUNITY BOARD"), "QUEENS COMMUNITY BOARD")) |>
+  mutate(aggregated_agency_name = replace(aggregated_agency_name, str_detect(agency_name, "MANHATTAN COMMUNITY BOARD"), "MANHATTAN COMMUNITY BOARD")) |>
+  mutate(aggregated_agency_name = replace(aggregated_agency_name, str_detect(agency_name, "BROOKLYN COMMUNITY BOARD"), "BROOKLYN COMMUNITY BOARD")) |>
+  mutate(aggregated_agency_name = replace(aggregated_agency_name, str_detect(agency_name, "BRONX COMMUNITY BOARD"), "BRONX COMMUNITY BOARD")) |>
+  mutate(aggregated_agency_name = replace(aggregated_agency_name, str_detect(agency_name, "BOROUGH PRESIDENT"), "BOROUGH PRESIDENT")) |>
+  mutate(aggregated_agency_name = replace(aggregated_agency_name, agency_name == "BOARD OF ELECTION POLL WORKERS", "BOARD OF ELECTION")) |>
+  mutate(aggregated_agency_name = replace(aggregated_agency_name, agency_name == "DEPARTMENT OF EDUCATION ADMIN", "DEPARTMENT OF EDUCATION")) |>
+  mutate(aggregated_agency_name = replace(aggregated_agency_name, agency_name == "DOE CUSTODIAL PAYROL", "DEPARTMENT OF EDUCATION")) |>
+  rename(
+    "Agency Name" = agency_name,
+    "Last Name" = last_name,
+    "First Name" = first_name,
+    "Work Location (Borough)" = work_location_borough,
+    "Title / Job Description" = title_description,
+    "Leave Status" = leave_status_as_of_june_30
+  ) |>
+  mutate(
+    base_annual_pay = case_when(
+      pay_basis == "per Hour" ~ base_salary * (regular_hours + 1.5 * ot_hours),
+      pay_basis == "per Annum" ~ base_salary,
+      pay_basis == "Per Day" ~ base_salary * regular_hours / 7.5,
+      pay_basis == "Prorated Annual" ~ base_salary
+    ),
+    gross_annual_pay = regular_gross_paid + total_ot_paid + total_other_pay
+  ) |>
+  filter(gross_annual_pay > 0) |>
+  filter(!is.na(`Last Name`))
+```
+
+## Which job title has the highest base rate of pay?
+The Mayor's office wished to know what role within New York City has the highest base rate of pay. We will be using the annualized base rate of pay and not the gross annual pay for this analysis. 
+T
+```{r}
+#| output: true
+tmp <- cleaned |>
+  group_by(`Title / Job Description`) |>
+  summarize(avg_base = mean(base_annual_pay)) |>
+  slice_max(order_by = avg_base, n = 1) |>
+  rename(title_description = `Title / Job Description`)
+
+kable(tmp |>
+  rename(
+    "Average Base Annual Pay" = avg_base
+  ))
+```
+
+The job title with the highest average annual base pay is `{r} tmp$title_description` at `{r} dollar(tmp$avg_base)` per year.
+
+
+## What individual and in what year had the highest total gross pay? 
+
+The commmision has decided to review this using the total gross pay[^5] as calculated by the methodology within the data dictionary provided by the city and not the annualized base rate of pay. 
+ 
+We reviewed 
+
+```{r}
+#| output: true
+tmp <- cleaned |>
+  group_by(fiscal_year) |>
+  slice_max(gross_annual_pay, n = 1) |>
+  select(fiscal_year, `Agency Name`, `Title / Job Description`, `Last Name`, `First Name`, mid_init, gross_annual_pay) |>
+  ungroup() |>
+  slice_max(gross_annual_pay, n = 1) |>
+  rename(
+    last_name = `Last Name`,
+    first_name = `First Name`,
+    agency_name = `Agency Name`,
+    title_description = `Title / Job Description`
+  )
+```
+
+`{r} paste(tmp$first_name, if(!is.na(tmp$mid_init)){paste(tmp$mid_init,".", sep="")}else{} ,tmp$last_name,sep=" ")`, the `{r} tmp$title_description` of the `{r} tmp$agency_name` had the highest total pay of `{r} dollar(tmp$gross_annual_pay)` in `{r} tmp$fiscal_year`. 
+
+## Which individual had worked the most overtime hours?
+
+### Highest Logged Amount of Overtime Hours Annually
+
+The Commission has found that the below employees have logged the largest amount of overtime hours per year. The Police Department notably is featured several times on this list. 
+
+```{r}
+#| output: true
+cleaned |>
+  group_by(fiscal_year, `Agency Name`, `Last Name`, `First Name`, mid_init, `Title / Job Description`) |>
+  summarize(total_ot_hours = sum(ot_hours)) |>
+  filter(!is.na(`Last Name`)) |>
+  ungroup(`Agency Name`, `Last Name`, `First Name`, mid_init, `Title / Job Description`) |>
+  slice_max(total_ot_hours, n = 1) |>
+  mutate(total_ot_days = total_ot_hours / 24) |>
+  arrange(desc(fiscal_year)) |>
+  rename(
+    "Middle Initial" = mid_init,
+    "Fiscal Year" = fiscal_year,
+    "Total Overtime Hours" = total_ot_hours,
+    "Total Overtime in Days" = total_ot_days
+  ) |>
+  kable()
+```
+
+
+
+### Employee with Highest Total Amount of Logged Overtime Hours 
+
+```{r}
+#| output: true
+tmp <- cleaned |>
+  filter(!is.na(`Last Name`)) |>
+  group_by(`Agency Name`, `Last Name`, `First Name`, mid_init, `Title / Job Description`) |>
+  summarize(total_ot_hours = sum(ot_hours)) |>
+  ungroup() |>
+  slice_max(total_ot_hours, n = 1) |>
+  mutate(total_ot_days = total_ot_hours / 24) |>
+  rename(
+    "Middle Initial" = mid_init,
+    "Total Overtime Hours" = total_ot_hours,
+    "Total Overtime in Days" = total_ot_days
+  ) |>
+  kable()
+```
+
+John Castillo, a Correctional Officer in the Department of Corrections, has logged the largest amount of overtime hours within NYC. Mr. Castillo has loved 22,120 hours or 922 days of overtime according to publically available data. 
+
+## Which agency has the highest average total annual gross payroll?
+
+```{r}
+#| output: true
+cleaned |>
+  group_by(aggregated_agency_name) |>
+  summarize(mean_annual_gross_salary = mean(gross_annual_pay)) |>
+  slice_max(mean_annual_gross_salary, n = 10) |>
+  kable()
+```
+
+The Office of Collective Bargaining[^1] has the highest average gross salary of any agency within New York City. This conclusion is sound as its stated mission[^3] is to help the City negotiate collective bargaining with unions and the department will need a high number of attorneys on payroll to do so. 
+
+## Which agency has the most employees on payroll each year?
+
+```{r}
+#| output: true
+cleaned |>
+  group_by(fiscal_year, aggregated_agency_name) |>
+  summarize(count_employee = n()) |>
+  ungroup() |>
+  slice_max(count_employee, n = 10) |>
+  arrange(desc(fiscal_year)) |>
+  rename(
+    "Number of Employees on File" = count_employee,
+    "Agency Name (Aggregated)" = aggregated_agency_name,
+    "Fiscal Year" = fiscal_year
+  ) |>
+  kable()
+```
+
+The Department of Education has the most employees of any department[^1] within New York City for all years with publically available data. 
+
+A le
+
+## Which agency has the highest average overtime usage?
+```{r}
+#| output: true
+cleaned |>
+  group_by(`Agency Name`) |>
+  summarize(avg_ot_count = mean(ot_hours), avg_reg_hours = mean(regular_hours)) |>
+  filter(avg_ot_count != 0) |>
+  arrange(desc(avg_ot_count)) |>
+  slice_max(avg_ot_count, n = 10) |>
+  rename(
+    "Average Amount of Overtime Hours" = avg_ot_count,
+    "Average Amount of Regular Hours" = avg_reg_hours
+  ) |>
+  kable()
+```
+
+The New York Fire Department has the highest average overtime hours of any department at 347 hours. 
+This was determined by taking the average amount of overtime hours logged by agency.  The top ten agencies by average amount of overtime worked is provided above. 
+
+## What is the average salary of employees outside of the five bouroughs?
+
+The average salary of employees outside of the five bouroughs is listed below. The commission is limited as the there is a catch all category called "Other". Futher granularity is needed for future analysis. 
+
+```{r}
+#| output: true
+cleaned |>
+  filter(`Work Location (Borough)` %in% c("ALBANY", "OTHER", "ORANGE")) |>
+  group_by(`Work Location (Borough)`) |>
+  summarize(avg_gross_annual_pay = mean(gross_annual_pay)) |>
+  kable()
+```
+
+## How much has the city's aggregate payroll grown in the past 10 years? 
+
+```{r}
+#| output: true
+pay_data <- cleaned |>
+  group_by(fiscal_year) |>
+  summarize(total_payroll = sum(gross_annual_pay))
+
+ggplot(data = pay_data, aes(x = fiscal_year, y = total_payroll)) +
+  geom_bar(stat = "identity") +
+  scale_y_continuous(
+    name = "Payroll of New York City",
+    labels = label_currency(scale_cut = cut_short_scale()),
+    breaks = scales::pretty_breaks(n = 6)
+  ) +
+  scale_x_continuous(
+    name = "Fiscal Year",
+    breaks = scales::pretty_breaks(n = 10)
+  )
+
+pay_2014 <- pay_data |> filter(fiscal_year == 2014)
+pay_2014 <- pay_2014$total_payroll
+pay_2024 <- pay_data |> filter(fiscal_year == 2024)
+pay_2024 <- pay_2024$total_payroll
+
+pay_diff <- pay_2024 - pay_2014
+```
+
+Over the last ten years, the total payroll of New York City has increased by `{r} dollar(pay_diff)`, from `{r} dollar(pay_2014)`in 2014 to `{r} dollar(pay_2024)` in 2024. 
+
+# Proposals to reduce expenditure 
+## Proposal 1: Introduce cap on the Mayor'ss salary
+
+```{r}
+eric_adams_data <- cleaned |>
+  filter(`Last Name` == "ADAMS", `First Name` == "ERIC", mid_init == "L")
+```
+
+```{r}
+ead <- eric_adams_data |>
+  group_by(fiscal_year) |>
+  summarize(sum_salary = sum(gross_annual_pay))
+
+ggplot(ead, mapping = aes(x = fiscal_year, y = sum_salary)) +
+  geom_bar(stat = "identity") +
+  scale_y_continuous(
+    name = "Annual Salary of Eric Adams",
+    labels = label_currency(scale_cut = cut_short_scale()),
+    breaks = scales::pretty_breaks(n = 6)
+  ) +
+  scale_x_continuous(
+    name = "Fiscal Year",
+    breaks = scales::pretty_breaks(n = 10)
+  )
+```
+
+
+```{r}
+#| output: true
+tmp <- cleaned |>
+  filter(`Title / Job Description` == "MAYOR") |>
+  group_by(fiscal_year) |>
+  summarize(total_payroll_costs = sum(gross_annual_pay))
+
+tmp |>
+  rename(
+    "Total Payrol" = total_payroll_costs,
+    "Fiscal Year" = fiscal_year
+  ) |>
+  kable()
+```
+We can see that the total annual payroll disbursed for the Mayor of New York City is nearly as high as the highest paid employee in New York City. Infact the average annual salary for the Mayor over the last ten years is `{r} dollar(mean(tmp$total_payroll_costs))`. The total paid between 2014 and 2024 is `{r} dollar(sum(tmp$total_payroll_costs))`. Given that the total payroll is in the billions for New York City, it does not make sense to cap the salary of the Mayor as the primary means to reduce the city budget. On the contrary, it may be beneficial to _increase_ the pay of the Mayor to help reduce the risk of corruption.[^4]
+
+## Proposal 2: Increase regular capacity by hiring more employees to reduce overtime expenditure
+To calculate how many employees will be needed, we will first add the total amount of 
+We will use a 2000 hour work week as the base line measurement.
+
+```{r}
+tmp <- cleaned |>
+  group_by(`Agency Name`, `Title / Job Description`) |>
+  summarize(
+    average_base_annual_pay = mean(base_annual_pay, ),
+    total_base_annual_pay = sum(base_annual_pay),
+    total_over_time_paid = sum(total_ot_paid),
+    total_ot_hours = sum(ot_hours)
+  ) |>
+  mutate(
+    number_new_full_time_employees = total_ot_hours %/% 2000,
+    ot_paid_converted_to_regular = total_over_time_paid / 1.5,
+    new_employee_cost = average_base_annual_pay * number_new_full_time_employees,
+    is_new_employee_outright_cheaper = case_when(
+      number_new_full_time_employees == 0 ~ 0,
+      ot_paid_converted_to_regular > new_employee_cost ~ 1,
+      TRUE ~ 0
+    ),
+    savings = case_when(
+      is_new_employee_outright_cheaper == 1 ~ ot_paid_converted_to_regular - new_employee_cost,
+      TRUE ~ 0
+    )
+  )
+
+total_savings_by_agency <- tmp |>
+  group_by(`Agency Name`) |>
+  summarise(total_savings = sum(savings)) |>
+  filter(total_savings > 0)
+
+total_savings_by_agency |>
+  slice_max(total_savings, n = 10) |>
+  kable()
+
+
+
+total_savings <- sum(total_savings_by_agency$total_savings)
+```
+
+The Commision is pleased to report that `{r} dollar(total_savings)` can be saved by hiring new employees to reduce overtime expenditure. The top ten departments that benefit from this action are in the above table. 
+
+
+## Proposal 3: Remove overtime pay and increase salaries by the median overtime paid
+```{r}
+#| output: yrue
+tmp <- cleaned |>
+  group_by(`Agency Name`, `Title / Job Description`) |>
+  summarize(
+    average_base_annual_pay = mean(base_annual_pay, ),
+    total_base_annual_pay = sum(base_annual_pay),
+    total_over_time_paid = sum(total_ot_paid),
+    average_over_time_paid = mean(total_ot_paid),
+    total_ot_hours = sum(ot_hours),
+    number_employees = n(),
+    median_over_time_paid = median(total_ot_paid),
+    proposed_salary_increase = number_employees * median_over_time_paid
+  ) |>
+  mutate(
+    proposed_pay_total = total_base_annual_pay + proposed_salary_increase,
+    current_pay_total = total_base_annual_pay + total_over_time_paid,
+    savings = proposed_pay_total - current_pay_total
+  ) |>
+  filter(savings > 0)
+
+total_savings <- sum(tmp$savings)
+
+total_savings_by_agency_median_ot <- tmp |>
+  group_by(`Agency Name`) |>
+  summarize(agency_savings = sum(savings))
+
+total_savings_by_agency_median_ot |>
+  slice_max(agency_savings, n = 10) |>
+  kable()
+```
+
+
+
+
+
+[^1]: The Commission has determined it was best to analyze this using the highest level departmental data. This was created using the _published_ department from payroll data and labelling it with the highest level department information that could be reasonably assigned. Lower level agency data has been retained and is used as a key to help identify unique employees within an agency in the absence of unique employee identifiers. 
+
+
+[^3]: https://www.ocb-nyc.org/about/
+
+[^4]: https://coconuts.co/singapore/features/million-dollar-question-do-singapores-ministers-deserve-a-raise/
+
+[^5]: https://data.cityofnewyork.us/City-Government/Citywide-Payroll-Data-Fiscal-Year-/k397-673e/about_data
+
+```{r}
+#| output: true
+time_vec <- c("Last Updated:", format(Sys.time(), "%Y-%m-%d at %H:%M%p"))
+cat(paste(time_vec, " "))
+```
