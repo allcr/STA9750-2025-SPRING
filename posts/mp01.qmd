@@ -149,7 +149,8 @@ cleaned <- ALL_DATA |>
 
 ## Which job title has the highest base rate of pay?
 The Mayor's office wished to know what role within New York City has the highest base rate of pay. We will be using the annualized base rate of pay and not the gross annual pay for this analysis. 
-T
+
+
 ```{r}
 #| output: true
 tmp <- cleaned |>
