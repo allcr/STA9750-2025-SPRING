@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.6.41">
+<meta name="generator" content="quarto-1.5.57">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -37,10 +37,10 @@ ul.task-list li input[type="checkbox"] {
 <script src="site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="site_libs/quarto-html/anchor.min.js"></script>
 <link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting-48ffa3e5b9d089919c6712c39e5b00f2.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-48e473adeccc421269c4b80f4c091a41.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -141,6 +141,7 @@ window.Quarto = {
     <span class="navbar-title">Minimum Viable Blog</span>
     </a>
   </div>
+            <div id="quarto-search" class="" title="Search"></div>
           <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
   <span class="navbar-toggler-icon"></span>
 </button>
@@ -194,7 +195,7 @@ window.Quarto = {
 
 <div class="cell">
 <div class="cell-output cell-output-stdout">
-<pre><code>Last Updated:   2025-03-01 at 08:37AM  </code></pre>
+<pre><code>Last Updated:   2025-03-02 at 17:59PM  </code></pre>
 </div>
 </div>
 
@@ -203,7 +204,7 @@ window.Quarto = {
 
 <div class="quarto-listing quarto-listing-container-default" id="listing-listing">
 <div class="list quarto-listing-default">
-<div class="quarto-post image-right" data-index="0" data-listing-file-modified-sort="1740666923766" data-listing-reading-time-sort="13" data-listing-word-count-sort="2414">
+<div class="quarto-post image-right" data-index="0" data-listing-file-modified-sort="1740956332900" data-listing-reading-time-sort="15" data-listing-word-count-sort="2989">
 <div class="thumbnail">
 <p><a href="./posts/mp01.html" class="no-external"></a></p><a href="./posts/mp01.html" class="no-external">
 <p class="card-img-top"><img src="posts/mp01_files/figure-html/unnamed-chunk-11-1.png"  class="thumbnail-image card-img"/></p>
@@ -211,13 +212,13 @@ window.Quarto = {
 </div>
 <div class="body">
 <h3 class="no-anchor listing-title">
-<a href="./posts/mp01.html" class="no-external">Proposal to The Mayor of New York City from the Commission to Analyze Taxpayer Spending (Mini Project 1)</a>
+<a href="./posts/mp01.html" class="no-external">A Review of the New York City Payroll with REccomendations for Improvement Commission to Analyze Taxpayer Spending (Mini Project 1)</a>
 </h3>
 <div class="listing-subtitle">
 <a href="./posts/mp01.html" class="no-external"></a>
 </div>
 <div class="listing-description">
-<a href="./posts/mp01.html" class="no-external">The Commission to Analyze Taxpayer Spending has been asked to analyze several questions of interest to the Mayor’s office regarding the annual budget for the City. In this…</a>
+<a href="./posts/mp01.html" class="no-external">In February 2025, the Commission to Analyze Taxpayer Spending was asked to analyze several questions of interest to the Mayor of New York City and the New York City Council…</a>
 </div>
 </div>
 <div class="metadata">
@@ -312,6 +313,8 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
   });
   clipboard.on('success', onCopySuccess);
   if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    // For code content inside modals, clipBoardJS needs to be initialized with a container option
+    // TODO: Check when it could be a function (https://github.com/zenorocha/clipboard.js/issues/860)
     const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
       text: getTextToCopy,
       container: window.document.getElementById('quarto-embedded-source-code-modal')
@@ -422,6 +425,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
       if (window.Quarto?.typesetMath) {
         window.Quarto.typesetMath(note);
       }
+      // TODO in 1.5, we should make sure this works without a callout special case
       if (note.classList.contains("callout")) {
         return note.outerHTML;
       } else {
