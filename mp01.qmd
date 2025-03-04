@@ -1,5 +1,5 @@
 ---
-title: "A Review of the New York City Payroll with Reccomendations for Improvement Commission to Analyze Taxpayer Spending (Mini Project 1)"
+title: "A Review of the New York City Payroll with Reccomendations for Improvement from the Commission to Analyze Taxpayer Spending (Mini Project 1)"
 format: 
   html: 
     code-fold: true
@@ -388,7 +388,11 @@ eric_adams_data <- cleaned |>
 ```
 
 ```{r}
-# TODO FIX THIS PLOT
+#| output: true
+#| label: eric_adams_pay
+#| fig-cap: "Eric L. Adams Payroll per Year"
+#| warning: false
+
 ead <- eric_adams_data |>
   group_by(fiscal_year) |>
   summarize(sum_salary = sum(gross_annual_pay))
