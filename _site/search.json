@@ -1,0 +1,135 @@
+[
+  {
+    "objectID": "mp01.html",
+    "href": "mp01.html",
+    "title": "A Review of the New York City Payroll with Reccomendations for Improvement Commission to Analyze Taxpayer Spending (Mini Project 1)",
+    "section": "",
+    "text": "In February 2025, the Commission to Analyze Taxpayer Spending was asked to analyze several questions of interest to the Mayor of New York City and the New York City Council regarding the budget for the City. In this document, we will present our findings to each of these questions."
+  },
+  {
+    "objectID": "mp01.html#which-job-title-has-the-highest-base-rate-of-pay",
+    "href": "mp01.html#which-job-title-has-the-highest-base-rate-of-pay",
+    "title": "A Review of the New York City Payroll with Reccomendations for Improvement Commission to Analyze Taxpayer Spending (Mini Project 1)",
+    "section": "Which job title has the highest base rate of pay?",
+    "text": "Which job title has the highest base rate of pay?\nThe commission has been asked which role within New York City has the highest base rate of pay. We will be using the annualized base rate of pay and not the gross annual pay for this analysis.\n\n\nCode\ntmp &lt;- cleaned |&gt;\n  group_by(title_description) |&gt;\n  summarize(avg_base = mean(base_annual_pay)) |&gt;\n  slice_max(order_by = avg_base, n = 1)\n\nkable(tmp |&gt;\n  rename(\n    \"Title / Job Description\" = title_description,\n    \"Average Base Annual Pay (USD)\" = avg_base\n  ), digits = 0, format.args = list(big.mark = \",\"))\n\n\n\n\n\nTitle / Job Description\nAverage Base Annual Pay (USD)\n\n\n\n\nChief Actuary\n296,470\n\n\n\n\n\nThe job title with the highest average annual base pay is Chief Actuary at $296,470 per year."
+  },
+  {
+    "objectID": "mp01.html#what-individual-and-in-what-year-had-the-highest-total-pay",
+    "href": "mp01.html#what-individual-and-in-what-year-had-the-highest-total-pay",
+    "title": "A Review of the New York City Payroll with Reccomendations for Improvement Commission to Analyze Taxpayer Spending (Mini Project 1)",
+    "section": "What individual and in what year had the highest total pay?",
+    "text": "What individual and in what year had the highest total pay?\nThe commission has decided to review this using the total gross pay as calculated by the methodology within the data dictionary provided by the city and not the annualized base rate of pay.\nTo do so, we\n\n\nCode\ntmp &lt;- cleaned |&gt;\n  select(fiscal_year, agency_name, title_description, last_name, first_name, mid_init, gross_annual_pay) |&gt;\n  ungroup() |&gt;\n  slice_max(gross_annual_pay, n = 1)\n\n\nMark K. Tettonis, the Chief Marine Engineer of the Department Of Transportation had the highest total pay of $1,689,518 in 2024."
+  },
+  {
+    "objectID": "mp01.html#which-individual-had-worked-the-most-overtime-hours",
+    "href": "mp01.html#which-individual-had-worked-the-most-overtime-hours",
+    "title": "A Review of the New York City Payroll with Reccomendations for Improvement Commission to Analyze Taxpayer Spending (Mini Project 1)",
+    "section": "Which individual had worked the most overtime hours?",
+    "text": "Which individual had worked the most overtime hours?\n\nHighest Logged Amount of Overtime Hours Annually\nThe Commission has found that the below employees have logged the largest amount of overtime hours per year. The Police Department notably is featured several times on this list.\nIn this instance, our analysis is hurt but the lack of unique employee identifiers. It is not immediately apparent why.\n\n\nCode\ncleaned |&gt;\n  group_by(fiscal_year, agency_name, last_name, first_name, mid_init, title_description) |&gt;\n  summarize(total_ot_hours = sum(ot_hours)) |&gt;\n  ungroup(agency_name, last_name, first_name, mid_init, title_description) |&gt;\n  slice_max(total_ot_hours, n = 1) |&gt;\n  mutate(total_ot_days = total_ot_hours / 24) |&gt;\n  arrange(desc(fiscal_year)) |&gt;\n  rename(\n    \"Fiscal Year\" = fiscal_year,\n    \"Total Overtime Hours\" = total_ot_hours,\n    \"Total Overtime in Days\" = total_ot_days,\n    \"Title / Job Description\" = title_description,\n    \"Agency Name\" = agency_name,\n    \"First Name\" = first_name,\n    \"Last Name\" = last_name,\n    \"Middle Initial\" = mid_init\n  ) |&gt;\n  kable()\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nFiscal Year\nAgency Name\nLast Name\nFirst Name\nMiddle Initial\nTitle / Job Description\nTotal Overtime Hours\nTotal Overtime in Days\n\n\n\n\n2024\nHra/Dept Of Social Services\nLeslie\nAsalay\nNA\nBenefits Opportunity Specialist\n3702.00\n154.2500\n\n\n2023\nDepartment Of Correction\nCastillo\nJohn\nNA\nCorrection Officer\n3943.05\n164.2937\n\n\n2022\nFire Department\nShelley\nJames\nM\nWiper\n5612.00\n233.8333\n\n\n2021\nDepartment Of Sanitation\nSarno\nJohn\nM\nSupervisor\n3131.00\n130.4583\n\n\n2020\nNyc Housing Authority\nDavis\nKenny\nA\nMaintenance Worker\n5051.00\n210.4583\n\n\n2019\nPolice Department\nIslam\nMd\nS\nTraffic Enforcement Agent Al 1 & 2 Only\n3145.00\n131.0417\n\n\n2018\nPolice Department\nIslam\nMd\nS\nTraffic Enforcement Agent Al 1 & 2 Only\n3028.50\n126.1875\n\n\n2017\nDepartment Of Correction\nCastillo\nJohn\nNA\nCorrection Officer\n2935.75\n122.3229\n\n\n2016\nPolice Department\nIslam\nMd\nS\nTraffic Enforcement Agent\n2987.50\n124.4792\n\n\n2015\nPolice Department\nUddin\nMohammad\nN\nTraffic Enforcement Agent\n5308.50\n221.1875\n\n\n2014\nDepartment Of Buildings\nMurphy\nJohn\nNA\nAssociate Inspector\n3347.50\n139.4792\n\n\n\n\n\n\n\nEmployee with Highest Total Amount of Logged Overtime Hours\n\n\nCode\ntmp &lt;- cleaned |&gt;\n  group_by(agency_name, last_name, first_name, mid_init, title_description) |&gt;\n  summarize(total_ot_hours = sum(ot_hours)) |&gt;\n  ungroup() |&gt;\n  slice_max(total_ot_hours, n = 1) |&gt;\n  mutate(total_ot_days = total_ot_hours / 24) |&gt;\n  rename(\n    \"Title / Job Description\" = title_description,\n    \"Agency Name\" = agency_name,\n    \"First Name\" = first_name,\n    \"Last Name\" = last_name,\n    \"Middle Initial\" = mid_init,\n    \"Total Overtime Hours\" = total_ot_hours,\n    \"Total Overtime in Days\" = total_ot_days\n  ) |&gt;\n  kable(digits = 2, format.args = list(big.mark = \",\"))\n\n\nJohn Castillo, a Correctional Officer in the Department of Corrections, has logged the largest amount of overtime hours within NYC. Mr. Castillo has logged 22,120 hours or 922 days of overtime according to publicly available data."
+  },
+  {
+    "objectID": "mp01.html#which-agency-has-the-highest-average-total-annual-gross-payroll",
+    "href": "mp01.html#which-agency-has-the-highest-average-total-annual-gross-payroll",
+    "title": "A Review of the New York City Payroll with Reccomendations for Improvement Commission to Analyze Taxpayer Spending (Mini Project 1)",
+    "section": "Which agency has the highest average total annual gross payroll?",
+    "text": "Which agency has the highest average total annual gross payroll?\n\n\nCode\ncleaned |&gt;\n  group_by(aggregated_agency_name) |&gt;\n  summarize(mean_annual_gross_salary = mean(gross_annual_pay)) |&gt;\n  slice_max(mean_annual_gross_salary, n = 10) |&gt;\n  rename(\n    \"Agency Name (Aggregated)\" = aggregated_agency_name,\n    \"Mean Annual Gross Salary (USD)\" = mean_annual_gross_salary\n  ) |&gt;\n  kable(digits = 2, format.args = list(big.mark = \",\"))\n\n\n\n\n\nAgency Name (Aggregated)\nMean Annual Gross Salary (USD)\n\n\n\n\nOffice Of Collective Bargainin\n105,562.73\n\n\nFinancial Info Svcs Agency\n105,436.71\n\n\nFire Department\n100,771.68\n\n\nOffice Of The Actuary\n98,543.01\n\n\nMunicipal Water Fin Authority\n92,880.93\n\n\nDepartment Of Correction\n89,654.30\n\n\nNyc Fire Pension Fund\n88,934.29\n\n\nIndependent Budget Office\n85,512.45\n\n\nPolice Department\n84,564.47\n\n\nConflicts Of Interest Board\n84,526.45\n\n\n\n\n\nThe Office of Collective Bargaining1 has the highest average gross salary of any agency within New York City. This conclusion is sound as its stated mission2 is to help the City negotiate collective bargaining with unions and the department will need a high number of attorneys on payroll to do so."
+  },
+  {
+    "objectID": "mp01.html#which-agency-has-the-most-employees-on-payroll-each-year",
+    "href": "mp01.html#which-agency-has-the-most-employees-on-payroll-each-year",
+    "title": "A Review of the New York City Payroll with Reccomendations for Improvement Commission to Analyze Taxpayer Spending (Mini Project 1)",
+    "section": "Which agency has the most employees on payroll each year?",
+    "text": "Which agency has the most employees on payroll each year?\n\n\nCode\ntmp &lt;- cleaned |&gt;\n  group_by(fiscal_year, aggregated_agency_name) |&gt;\n  summarize(count_employee = n()) |&gt;\n  ungroup() |&gt;\n  slice_max(count_employee, n = 10) |&gt;\n  arrange(desc(fiscal_year)) |&gt;\n  rename(\n    \"Number of Employees on File\" = count_employee,\n    \"Agency Name (Aggregated)\" = aggregated_agency_name,\n    \"Fiscal Year\" = fiscal_year\n  )\ntmp$`Number of Employees on File` &lt;- format(tmp$`Number of Employees on File`, big.mark = \",\")\n\nkable(tmp)\n\n\n\n\n\nFiscal Year\nAgency Name (Aggregated)\nNumber of Employees on File\n\n\n\n\n2024\nDepartment Of Education\n295,223\n\n\n2023\nDepartment Of Education\n289,856\n\n\n2022\nDepartment Of Education\n342,860\n\n\n2021\nDepartment Of Education\n303,807\n\n\n2020\nDepartment Of Education\n313,471\n\n\n2019\nDepartment Of Education\n310,097\n\n\n2018\nDepartment Of Education\n273,855\n\n\n2017\nDepartment Of Education\n266,499\n\n\n2016\nDepartment Of Education\n265,291\n\n\n2015\nDepartment Of Education\n299,815\n\n\n\n\n\nThe Department of Education has the most employees of any department3 within New York City for all years with publicly available data."
+  },
+  {
+    "objectID": "mp01.html#which-agency-has-the-highest-average-overtime-usage",
+    "href": "mp01.html#which-agency-has-the-highest-average-overtime-usage",
+    "title": "A Review of the New York City Payroll with Reccomendations for Improvement Commission to Analyze Taxpayer Spending (Mini Project 1)",
+    "section": "Which agency has the highest average overtime usage?",
+    "text": "Which agency has the highest average overtime usage?\n\n\nCode\ncleaned |&gt;\n  group_by(agency_name) |&gt;\n  summarize(avg_ot_count = mean(ot_hours), avg_reg_hours = mean(regular_hours)) |&gt;\n  filter(avg_ot_count != 0) |&gt;\n  arrange(desc(avg_ot_count)) |&gt;\n  slice_max(avg_ot_count, n = 10) |&gt;\n  rename(\n    \"Agency Name\" = agency_name,\n    \"Average Amount of Overtime Hours\" = avg_ot_count,\n    \"Average Amount of Regular Hours\" = avg_reg_hours\n  ) |&gt;\n  kable(digits = 0, format.args = list(big.mark = \",\"))\n\n\n\n\n\n\n\n\n\n\nAgency Name\nAverage Amount of Overtime Hours\nAverage Amount of Regular Hours\n\n\n\n\nFire Department\n347\n1,822\n\n\nDepartment Of Correction\n321\n1,739\n\n\nBoard Of Election\n262\n1,314\n\n\nDepartment Of Sanitation\n224\n1,618\n\n\nPolice Department\n214\n1,717\n\n\nDept Of Citywide Admin Svcs\n189\n1,582\n\n\nDepartment Of Transportation\n185\n1,609\n\n\nNyc Housing Authority\n169\n1,600\n\n\nDept. Of Homeless Services\n164\n1,501\n\n\nAdmin For Children’s Svcs\n121\n1,491\n\n\n\n\n\nThe New York Fire Department has the highest average overtime hours of any department at 347 hours. This was determined by taking the average amount of overtime hours logged by agency. The top ten agencies by average amount of overtime worked is provided above."
+  },
+  {
+    "objectID": "mp01.html#what-is-the-average-salary-of-employees-outside-of-the-five-bouroughs",
+    "href": "mp01.html#what-is-the-average-salary-of-employees-outside-of-the-five-bouroughs",
+    "title": "A Review of the New York City Payroll with Reccomendations for Improvement Commission to Analyze Taxpayer Spending (Mini Project 1)",
+    "section": "What is the average salary of employees outside of the five bouroughs?",
+    "text": "What is the average salary of employees outside of the five bouroughs?\nThe average salary of employees outside of the five boroughs is listed below. The commission is limited as the there is a catch all category called “Other”. Further granularity is needed for future analysis. We leave out any employee where the work location was recorded as NA.\n\n\nCode\ncleaned |&gt;\n  filter(work_location_borough %in% c(\"Albany\", \"Other\", \"Orange\")) |&gt;\n  group_by(work_location_borough) |&gt;\n  summarize(avg_gross_annual_pay = mean(gross_annual_pay)) |&gt;\n  rename(\n    \"Work Location (Borough)\" = work_location_borough,\n    \"Average Gross Annual Pay\" = avg_gross_annual_pay\n  ) |&gt;\n  kable(digits = 0, format.args = list(big.mark = \",\"))\n\n\n\n\n\nWork Location (Borough)\nAverage Gross Annual Pay\n\n\n\n\nAlbany\n86,341\n\n\nOrange\n53,821\n\n\nOther\n68,753"
+  },
+  {
+    "objectID": "mp01.html#how-much-has-the-citys-aggregate-payroll-grown-in-the-past-10-years",
+    "href": "mp01.html#how-much-has-the-citys-aggregate-payroll-grown-in-the-past-10-years",
+    "title": "A Review of the New York City Payroll with Reccomendations for Improvement Commission to Analyze Taxpayer Spending (Mini Project 1)",
+    "section": "How much has the city’s aggregate payroll grown in the past 10 years?",
+    "text": "How much has the city’s aggregate payroll grown in the past 10 years?\n\n\nCode\npay_data &lt;- cleaned |&gt;\n  group_by(fiscal_year) |&gt;\n  summarize(total_payroll = sum(gross_annual_pay))\n\nggplot(data = pay_data, aes(x = fiscal_year, y = total_payroll)) +\n  geom_bar(stat = \"identity\",fill='steelblue') +\n  scale_y_continuous(\n    name = \"Payroll of New York City\",\n    labels = label_currency(scale_cut = cut_short_scale()),\n    breaks = scales::pretty_breaks(n = 6)\n  ) +\n  scale_x_continuous(\n    name = \"Fiscal Year\",\n    breaks = scales::pretty_breaks(n = 10)\n  ) +\n  coord_cartesian(ylim = c(20000000000, NA))\n\n\n\n\n\nNYC Total Payroll per Year\n\n\n\n\n\n\nCode\npay_2014 &lt;- pay_data |&gt; filter(fiscal_year == 2014)|&gt; select(total_payroll)\npay_2024 &lt;- pay_data |&gt; filter(fiscal_year == 2024)|&gt; select(total_payroll)\n\npay_diff &lt;- pay_2024 - pay_2014\n\n\nOver the last ten years, the total payroll of New York City has increased by $9,261,070,771, from $22,854,720,601in 2014 to $32,115,791,372 in 2024."
+  },
+  {
+    "objectID": "mp01.html#proposal-1-introduce-cap-on-the-mayors-salary",
+    "href": "mp01.html#proposal-1-introduce-cap-on-the-mayors-salary",
+    "title": "A Review of the New York City Payroll with Reccomendations for Improvement Commission to Analyze Taxpayer Spending (Mini Project 1)",
+    "section": "Proposal 1: Introduce cap on the Mayor’s salary",
+    "text": "Proposal 1: Introduce cap on the Mayor’s salary\n\n\nCode\neric_adams_data &lt;- cleaned |&gt;\n  filter(last_name == \"Adams\", first_name == \"Eric\", mid_init == \"L\")\n\n\n\n\nCode\n# TODO FIX THIS PLOT\nead &lt;- eric_adams_data |&gt;\n  group_by(fiscal_year) |&gt;\n  summarize(sum_salary = sum(gross_annual_pay))\n\nggplot(ead, mapping = aes(x = fiscal_year, y = sum_salary)) +\n  geom_bar(stat = \"identity\") +\n  scale_y_continuous(\n    name = \"Annual Salary of Eric Adams\",\n    labels = label_currency(scale_cut = cut_short_scale()),\n    breaks = scales::pretty_breaks(n = 6)\n  ) +\n  scale_x_continuous(\n    name = \"Fiscal Year\",\n    breaks = scales::pretty_breaks(n = 10)\n  )\n\n\n\n\nCode\ntmp &lt;- cleaned |&gt;\n  filter(title_description == \"Mayor\") |&gt;\n  group_by(fiscal_year) |&gt;\n  summarize(total_payroll_costs = sum(gross_annual_pay))\n\ntmp |&gt;\n  rename(\n    \"Total Payroll\" = total_payroll_costs,\n    \"Fiscal Year\" = fiscal_year\n  ) |&gt;\n  kable(format.args = list(big.mark = \",\"))\n\n\n\n\n\nFiscal Year\nTotal Payroll\n\n\n\n\n2,014\n101,836.6\n\n\n2,015\n224,383.6\n\n\n2,016\n223,799.2\n\n\n2,017\n232,981.8\n\n\n2,018\n243,565.1\n\n\n2,019\n258,541.2\n\n\n2,020\n258,851.5\n\n\n2,021\n253,064.9\n\n\n2,022\n264,490.5\n\n\n2,023\n258,041.2\n\n\n2,024\n257,361.2\n\n\n\n\n\nWe can see that the total annual payroll disbursed for the Mayor of New York City is nearly as high as the highest paid employee in New York City. In fact the average annual salary for the Mayor over the last ten years is $234,265. The total paid between 2014 and 2024 is $2,576,917. Given that the total payroll is in the billions for New York City, it does not make sense to cap the salary of the Mayor as the primary means to reduce the city budget. On the contrary, it may be beneficial to increase the pay of the Mayor to help reduce the risk of corruption.4"
+  },
+  {
+    "objectID": "mp01.html#proposal-2-increase-regular-capacity-by-hiring-more-employees-to-reduce-overtime-expenditure",
+    "href": "mp01.html#proposal-2-increase-regular-capacity-by-hiring-more-employees-to-reduce-overtime-expenditure",
+    "title": "A Review of the New York City Payroll with Reccomendations for Improvement Commission to Analyze Taxpayer Spending (Mini Project 1)",
+    "section": "Proposal 2: Increase regular capacity by hiring more employees to reduce overtime expenditure",
+    "text": "Proposal 2: Increase regular capacity by hiring more employees to reduce overtime expenditure\nTo calculate how many employees will be needed, we will first add the total amount of We will use a 2000 hour work week as the base line measurement.\n\n\nCode\ntmp &lt;- cleaned |&gt;\n  group_by(agency_name, title_description) |&gt;\n  summarize(\n    average_base_annual_pay = mean(base_annual_pay, ),\n    total_base_annual_pay = sum(base_annual_pay),\n    total_over_time_paid = sum(total_ot_paid),\n    total_ot_hours = sum(ot_hours)\n  ) |&gt;\n  mutate(\n    number_new_full_time_employees = total_ot_hours %/% 2000,\n    ot_paid_converted_to_regular = total_over_time_paid / 1.5,\n    new_employee_cost = average_base_annual_pay * number_new_full_time_employees,\n    is_new_employee_outright_cheaper = case_when(\n      number_new_full_time_employees == 0 ~ 0,\n      ot_paid_converted_to_regular &gt; new_employee_cost ~ 1,\n      TRUE ~ 0\n    ),\n    savings = case_when(\n      is_new_employee_outright_cheaper == 1 ~ ot_paid_converted_to_regular - new_employee_cost,\n      TRUE ~ 0\n    )\n  )\n\ntotal_savings_by_agency &lt;- tmp |&gt;\n  group_by(agency_name) |&gt;\n  summarise(total_savings = sum(savings)) |&gt;\n  filter(total_savings &gt; 0)\n\ntotal_savings_by_agency |&gt;\n  slice_max(total_savings, n = 10) |&gt;\n  kable(format.args = list(big.mark = \",\"))\n\n\n\ntotal_savings &lt;- sum(total_savings_by_agency$total_savings)\n\n\nThe Commission is pleased to report that $369,697,386 can be saved by hiring new employees to reduce overtime expenditure. The top ten departments that benefit from this action are in the above table."
+  },
+  {
+    "objectID": "mp01.html#proposal-3-remove-overtime-pay-and-increase-salaries-by-the-median-or-average-overtime-paid",
+    "href": "mp01.html#proposal-3-remove-overtime-pay-and-increase-salaries-by-the-median-or-average-overtime-paid",
+    "title": "A Review of the New York City Payroll with Reccomendations for Improvement Commission to Analyze Taxpayer Spending (Mini Project 1)",
+    "section": "Proposal 3: Remove overtime pay and increase salaries by the median or average overtime paid",
+    "text": "Proposal 3: Remove overtime pay and increase salaries by the median or average overtime paid\nOvertime expenditure is a significant portion of the overall payroll for New York City. We will review the financial impact of eliminating overtime all together and replacing it with a one time pay raise. This one time raise will be equal to the lower value of the median overtime or the average overtime paid per agency and description.\nThe annualized base pay and the total overtime paid will be used as the base rate instead of the gross rate. This will simplify our analysis, but we lose a degree of accuracy by not including the total other pay for each employee.\nWe will attempt to back-date this analysis by calculating the mean and median overtime paid per agency, job title, and fiscal year. We will then add the lower of the median and the mean to the annualized base pay to create the proposed pay rate. The amount of savings is calculated subtracting the proposed pay rate from the sum of the annualized base pay and the total over paid.\nWe will then compare the results against the annual payroll per year to see the total savings had this methodology been adopted in the past.\n\n\nCode\n# TODO Get rid of all the TMPs\n\ntmp &lt;- cleaned |&gt;\n  group_by(fiscal_year, agency_name, title_description) |&gt;\n  summarize(\n    average_base_annual_pay = mean(base_annual_pay, ),\n    total_base_annual_pay = sum(base_annual_pay),\n    total_over_time_paid = sum(total_ot_paid),\n    average_over_time_paid = mean(total_ot_paid),\n    median_over_time_paid = median(total_ot_paid),\n    total_ot_hours = sum(ot_hours),\n    number_employees = n(),\n    smaller_of_two = min(average_over_time_paid, median_over_time_paid),\n    proposed_total_salary_increase = number_employees * smaller_of_two\n  ) |&gt;\n  mutate(\n    current_pay_total = total_base_annual_pay + total_over_time_paid,\n    proposed_pay_total = total_base_annual_pay + proposed_total_salary_increase,\n    savings = current_pay_total - proposed_pay_total\n  )\n\n\ntotal_savings &lt;- sum(tmp$savings)\n\ntotal_savings_by_agency &lt;- tmp |&gt;\n  group_by(agency_name) |&gt;\n  summarize(agency_savings = sum(savings))\n\n\nWe can see in the below table that the savings are significant each year.\n\n\nCode\ntmp |&gt;\n  group_by(fiscal_year) |&gt;\n  summarize(savings = sum(savings, na.rm = TRUE)) |&gt;\n  rename(\n    \"Total Annual Payroll Savings\" = savings,\n    \"Fiscal Year\" = fiscal_year\n  ) |&gt;\n  kable(format.args = list(big.mark = \",\"))\n\n\n\n\nCode\n# TODO check this\ntotal_savings_by_agency |&gt;\n  slice_max(agency_savings, n = 10) |&gt;\n  kable(digits = 0, format.args = list(big.mark = \",\"))\n\n\nIn total, allocating a pay increase in this manner is estimated to save the City NA. We can see the ten agencies that save the most money using this method.\n\n\nCode\ntime_vec &lt;- c(\"Last Updated:\", format(Sys.time(), \"%Y-%m-%d at %H:%M%p\"))\ncat(paste(time_vec, \" \"))\n\n\nLast Updated:   2025-03-03 at 20:40PM"
+  },
+  {
+    "objectID": "mp01.html#footnotes",
+    "href": "mp01.html#footnotes",
+    "title": "A Review of the New York City Payroll with Reccomendations for Improvement Commission to Analyze Taxpayer Spending (Mini Project 1)",
+    "section": "Footnotes",
+    "text": "Footnotes\n\n\nThe Commission has determined it was best to analyze this using the highest level departmental data. This was created using the published department from payroll data and labeling it with the highest level department information that could be reasonably assigned. Lower level agency data has been retained and is used as a key to help identify unique employees within an agency in the absence of unique employee identifiers.↩︎\nhttps://www.ocb-nyc.org/about/↩︎\nThe Commission has determined it was best to analyze this using the highest level departmental data. This was created using the published department from payroll data and labeling it with the highest level department information that could be reasonably assigned. Lower level agency data has been retained and is used as a key to help identify unique employees within an agency in the absence of unique employee identifiers.↩︎\nhttps://coconuts.co/singapore/features/million-dollar-question-do-singapores-ministers-deserve-a-raise/↩︎"
+  },
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "Craig Allen",
+    "section": "",
+    "text": "Zicklin School of Business - Baruch College, New York, NY\nM.S. in Statistics, 2024 - Current\nSyracuse University, Syracuse, NY\nB.S. in Mathematics, 2011 - 2015"
+  },
+  {
+    "objectID": "about.html#education",
+    "href": "about.html#education",
+    "title": "Craig Allen",
+    "section": "",
+    "text": "Zicklin School of Business - Baruch College, New York, NY\nM.S. in Statistics, 2024 - Current\nSyracuse University, Syracuse, NY\nB.S. in Mathematics, 2011 - 2015"
+  },
+  {
+    "objectID": "about.html#experience",
+    "href": "about.html#experience",
+    "title": "Craig Allen",
+    "section": "Experience",
+    "text": "Experience\n\nCitigroup\nFD Technologies\nQuantitative Brokers\nDeutsche Bank"
+  },
+  {
+    "objectID": "about.html#trivia",
+    "href": "about.html#trivia",
+    "title": "Craig Allen",
+    "section": "Trivia",
+    "text": "Trivia\n\nBooks I’d Reccomend\n\nThe Unaccountability Machine by Dan Davies\n\nThere is No Antimemetics Division by qntm\n\nThis Is How You Lose the Time War by Amal El-Mohtar and Max Gladstone\n\nShogun by James Clavell\n\n\n\nCurrently Reading\nChevengur by Andrey Platonov\n\n\nLikes\n\nCult and B movies\nMeditation\nReading\nTrying to keep bonsai trees alive\nWhen my code works\nCollecting vinyl records\n\n\n\nDislikes\n\nWhen my code doesn’t work\nMoving my vinyl records"
+  },
+  {
+    "objectID": "about.html#song-of-the-week",
+    "href": "about.html#song-of-the-week",
+    "title": "Craig Allen",
+    "section": "Song of the Week",
+    "text": "Song of the Week\n\n\n\nLast Updated:   2025-03-03 at 20:40PM"
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "STA9750 Spring 2025 Submission Material",
+    "section": "",
+    "text": "Last Updated:   2025-03-03 at 20:43PM  \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nA Review of the New York City Payroll with Reccomendations for Improvement Commission to Analyze Taxpayer Spending (Mini Project 1)\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nNo matching items"
+  }
+]

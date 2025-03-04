@@ -1,11 +1,12 @@
 ---
 title: "STA9750 Spring 2025 Submission Material"
 listing:
-    contents: posts
     sort: "date desc"
     type: default
     sort-ui: false
     filter-ui: false
+    contents:
+        - "mp*.qmd"
 page-layout: full
 title-block-banner: true
 ---
