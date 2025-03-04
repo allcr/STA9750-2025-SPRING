@@ -1,10 +1,10 @@
 ---
-title: "A Review of the New York City Payroll with REccomendations for Improvement Commission to Analyze Taxpayer Spending (Mini Project 1)"
+title: "A Review of the New York City Payroll with Reccomendations for Improvement Commission to Analyze Taxpayer Spending (Mini Project 1)"
 format: 
   html: 
     code-fold: true
 execute:
-  echo: false
+  echo: true
   output: false
 draft: False
 ---
@@ -109,12 +109,13 @@ if (!file.exists("data/mp01/nyc_payroll_export.csv")) {
 
   ALL_DATA <- read_csv("data/mp01/nyc_payroll_export.csv", col_types = "iiccccTcccncnnn")
 }
-```
 
 
-```{r}
+
+
 cleaned <- ALL_DATA |>
   mutate(work_location_borough = replace(work_location_borough, work_location_borough == "Bronx", "BRONX")) |>
+  mutate(agency_name = replace(agency_name, agency_name == "Office Of Collective Bargainin", "Office Of Collective Bargaining")) |>
   mutate(agency_name = replace(agency_name, agency_name == "Police Department", "POLICE DEPARTMENT")) |>
   mutate(agency_name = replace(agency_name, agency_name == "Bronx DA", "BRONX DISTRICT ATTORNEY")) |>
   mutate(agency_name = replace(agency_name, agency_name == "Manhattan DA", "DISTRICT ATTORNEY-MANHATTAN")) |>
@@ -148,15 +149,6 @@ cleaned <- ALL_DATA |>
     work_location_borough = str_to_title(work_location_borough),
     leave_status_as_of_june_30 = str_to_title(leave_status_as_of_june_30)
   ) |>
-  rename(
-    "Agency Name" = agency_name,
-    "Last Name" = last_name,
-    "Middle Initial" = mid_init,
-    "First Name" = first_name,
-    "Work Location (Borough)" = work_location_borough,
-    "Title / Job Description" = title_description,
-    "Leave Status" = leave_status_as_of_june_30
-  ) |>
   mutate(
     base_annual_pay = case_when(
       pay_basis == "per Hour" ~ base_salary * (regular_hours + 1.5 * ot_hours),
@@ -167,19 +159,27 @@ cleaned <- ALL_DATA |>
     gross_annual_pay = regular_gross_paid + total_ot_paid + total_other_pay
   ) |>
   filter(gross_annual_pay > 0) |>
-  filter(!is.na(`Last Name`))
+  filter(!is.na(last_name))
 
-# rm(ALL_DATA)
+rm(ALL_DATA)
 ```
 
+The commission  will use the NYC Payroll data with the specified data dictionary found [here](https://data.cityofnewyork.us/City-Government/Citywide-Payroll-Data-Fiscal-Year-/k397-673e). The Commission has annualized the base pay rate reported in the city data. This analysis, at times, will also rely on the gross annual pay as recommended in the notes attached to the data dictionary. 
+
+The Commission has cleaned the data to the best of its ability. The Commission also defined an aggregated agency name. This is used for analysis where we need to analyze an agency as a whole and not any reported sub divisions of an agency. The Department of Education notably has many sub divisions. 
+
+The Commission has also corrected data for Custodial Engineers within the city. There is a pattern of classifying these employees as hourly workers which does not align with the salaries they are recorded to have received. As such, they have been classified as "Per Annum" employees with regard to pay. 
+
+The Commission  has removed records from the analysis where the gross annual pay is less than zero or there is no last name recorded in the data set. The Commission believes that these records require further information to properly address. However, this information is not currently available. 
+
+
 ## Which job title has the highest base rate of pay?
-The Mayor's office wished to know what role within New York City has the highest base rate of pay. We will be using the annualized base rate of pay and not the gross annual pay for this analysis. 
+The commission has been asked which role within New York City has the highest base rate of pay. We will be using the annualized base rate of pay and not the gross annual pay for this analysis. 
 
 
 ```{r}
 #| output: true
 tmp <- cleaned |>
-  rename(title_description = `Title / Job Description`) |>
   group_by(title_description) |>
   summarize(avg_base = mean(base_annual_pay)) |>
   slice_max(order_by = avg_base, n = 1)
@@ -194,27 +194,19 @@ kable(tmp |>
 The job title with the highest average annual base pay is `{r} tmp$title_description` at `{r} dollar(tmp$avg_base)` per year.
 
 
-## What individual and in what year had the highest total gross pay? 
+## What individual and in what year had the highest total pay? 
 
-The commission has decided to review this using the total gross pay[^5] as calculated by the methodology within the data dictionary provided by the city and not the annualized base rate of pay. 
+The commission has decided to review this using the total gross pay as calculated by the methodology within the data dictionary provided by the city and not the annualized base rate of pay. 
+
+To do so, we 
  
-We reviewed 
 
 ```{r}
 #| output: true
 tmp <- cleaned |>
-  group_by(fiscal_year) |>
-  slice_max(gross_annual_pay, n = 1) |>
-  select(fiscal_year, `Agency Name`, `Title / Job Description`, `Last Name`, `First Name`, `Middle Initial`, gross_annual_pay) |>
+  select(fiscal_year, agency_name, title_description, last_name, first_name, mid_init, gross_annual_pay) |>
   ungroup() |>
-  slice_max(gross_annual_pay, n = 1) |>
-  rename(
-    last_name = `Last Name`,
-    first_name = `First Name`,
-    mid_init = `Middle Initial`,
-    agency_name = `Agency Name`,
-    title_description = `Title / Job Description`
-  )
+  slice_max(gross_annual_pay, n = 1)
 ```
 
 `{r} paste(tmp$first_name, if(!is.na(tmp$mid_init)){paste(tmp$mid_init,".", sep="")}else{} ,tmp$last_name,sep=" ")`, the `{r} tmp$title_description` of the `{r} tmp$agency_name` had the highest total pay of `{r} dollar(tmp$gross_annual_pay)` in `{r} tmp$fiscal_year`. 
@@ -225,20 +217,26 @@ tmp <- cleaned |>
 
 The Commission has found that the below employees have logged the largest amount of overtime hours per year. The Police Department notably is featured several times on this list. 
 
+In this instance, our analysis is hurt but the lack of unique employee identifiers. It is not immediately apparent why. 
+
 ```{r}
 #| output: true
 cleaned |>
-  group_by(fiscal_year, `Agency Name`, `Last Name`, `First Name`, `Middle Initial`, `Title / Job Description`) |>
+  group_by(fiscal_year, agency_name, last_name, first_name, mid_init, title_description) |>
   summarize(total_ot_hours = sum(ot_hours)) |>
-  filter(!is.na(`Last Name`)) |>
-  ungroup(`Agency Name`, `Last Name`, `First Name`, `Middle Initial`, `Title / Job Description`) |>
+  ungroup(agency_name, last_name, first_name, mid_init, title_description) |>
   slice_max(total_ot_hours, n = 1) |>
   mutate(total_ot_days = total_ot_hours / 24) |>
   arrange(desc(fiscal_year)) |>
   rename(
     "Fiscal Year" = fiscal_year,
     "Total Overtime Hours" = total_ot_hours,
-    "Total Overtime in Days" = total_ot_days
+    "Total Overtime in Days" = total_ot_days,
+    "Title / Job Description" = title_description,
+    "Agency Name" = agency_name,
+    "First Name" = first_name,
+    "Last Name" = last_name,
+    "Middle Initial" = mid_init
   ) |>
   kable()
 ```
@@ -250,13 +248,17 @@ cleaned |>
 ```{r}
 #| output: true
 tmp <- cleaned |>
-  filter(!is.na(`Last Name`)) |>
-  group_by(`Agency Name`, `Last Name`, `First Name`, `Middle Initial`, `Title / Job Description`) |>
+  group_by(agency_name, last_name, first_name, mid_init, title_description) |>
   summarize(total_ot_hours = sum(ot_hours)) |>
   ungroup() |>
   slice_max(total_ot_hours, n = 1) |>
   mutate(total_ot_days = total_ot_hours / 24) |>
   rename(
+    "Title / Job Description" = title_description,
+    "Agency Name" = agency_name,
+    "First Name" = first_name,
+    "Last Name" = last_name,
+    "Middle Initial" = mid_init,
     "Total Overtime Hours" = total_ot_hours,
     "Total Overtime in Days" = total_ot_days
   ) |>
@@ -308,12 +310,13 @@ The Department of Education has the most employees of any department[^1] within 
 ```{r}
 #| output: true
 cleaned |>
-  group_by(`Agency Name`) |>
+  group_by(agency_name) |>
   summarize(avg_ot_count = mean(ot_hours), avg_reg_hours = mean(regular_hours)) |>
   filter(avg_ot_count != 0) |>
   arrange(desc(avg_ot_count)) |>
   slice_max(avg_ot_count, n = 10) |>
   rename(
+    "Agency Name" = agency_name,
     "Average Amount of Overtime Hours" = avg_ot_count,
     "Average Amount of Regular Hours" = avg_reg_hours
   ) |>
@@ -330,9 +333,13 @@ The average salary of employees outside of the five boroughs is listed below. Th
 ```{r}
 #| output: true
 cleaned |>
-  filter(`Work Location (Borough)` %in% c("Albany", "Other", "Orange")) |>
-  group_by(`Work Location (Borough)`) |>
+  filter(work_location_borough %in% c("Albany", "Other", "Orange")) |>
+  group_by(work_location_borough) |>
   summarize(avg_gross_annual_pay = mean(gross_annual_pay)) |>
+  rename(
+    "Work Location (Borough)" = work_location_borough,
+    "Average Gross Annual Pay" = avg_gross_annual_pay
+  ) |>
   kable(digits = 0, format.args = list(big.mark = ","))
 ```
 
@@ -340,12 +347,16 @@ cleaned |>
 
 ```{r}
 #| output: true
+#| label: nyc_total_payroll
+#| fig-cap: "NYC Total Payroll per Year"
+#| warning: false
 pay_data <- cleaned |>
   group_by(fiscal_year) |>
   summarize(total_payroll = sum(gross_annual_pay))
 
 ggplot(data = pay_data, aes(x = fiscal_year, y = total_payroll)) +
   geom_bar(stat = "identity") +
+  geom_col(fill = "steelblue") +
   scale_y_continuous(
     name = "Payroll of New York City",
     labels = label_currency(scale_cut = cut_short_scale()),
@@ -354,29 +365,32 @@ ggplot(data = pay_data, aes(x = fiscal_year, y = total_payroll)) +
   scale_x_continuous(
     name = "Fiscal Year",
     breaks = scales::pretty_breaks(n = 10)
-  )
+  ) +
+  coord_cartesian(ylim = c(20000000000, NA))
 
-pay_2014 <- pay_data |> filter(fiscal_year == 2014)
-pay_2014 <- pay_2014$total_payroll
-pay_2024 <- pay_data |> filter(fiscal_year == 2024)
-pay_2024 <- pay_2024$total_payroll
+ggsave("historical_pay_per_year.png")
+```
+
+```{r}
+pay_2014 <- pay_data |> filter(fiscal_year == 2014)|> select(total_payroll)
+pay_2024 <- pay_data |> filter(fiscal_year == 2024)|> select(total_payroll)
 
 pay_diff <- pay_2024 - pay_2014
 ```
 
-Over the last ten years, the total payroll of New York City has increased by `{r} dollar(pay_diff)`, from `{r} dollar(pay_2014)`in 2014 to `{r} dollar(pay_2024)` in 2024. 
+Over the last ten years, the total payroll of New York City has increased by `{r} dollar(pay_diff$total_payroll)`, from `{r} dollar(pay_2014$total_payroll)`in 2014 to `{r} dollar(pay_2024$total_payroll)` in 2024. 
+![Ten Years of Historical Pay]("historical_pay_per_year.png")
 
 # Proposals to reduce expenditure 
 ## Proposal 1: Introduce cap on the Mayor'ss salary
 
 ```{r}
 eric_adams_data <- cleaned |>
-  filter(`Last Name` == "Adans", `First Name` == "Eric", `Middle Initial` == "L")
+  filter(last_name == "Adams", first_name == "Eric", mid_init == "L")
 ```
 
 ```{r}
-
-#TODO FIX THIS PLOT
+# TODO FIX THIS PLOT
 ead <- eric_adams_data |>
   group_by(fiscal_year) |>
   summarize(sum_salary = sum(gross_annual_pay))
@@ -398,7 +412,7 @@ ggplot(ead, mapping = aes(x = fiscal_year, y = sum_salary)) +
 ```{r}
 #| output: true
 tmp <- cleaned |>
-  filter(`Title / Job Description` == "Mayor") |>
+  filter(title_description == "Mayor") |>
   group_by(fiscal_year) |>
   summarize(total_payroll_costs = sum(gross_annual_pay))
 
@@ -417,7 +431,7 @@ We will use a 2000 hour work week as the base line measurement.
 
 ```{r}
 tmp <- cleaned |>
-  group_by(`Agency Name`, `Title / Job Description`) |>
+  group_by(agency_name, title_description) |>
   summarize(
     average_base_annual_pay = mean(base_annual_pay, ),
     total_base_annual_pay = sum(base_annual_pay),
@@ -440,7 +454,7 @@ tmp <- cleaned |>
   )
 
 total_savings_by_agency <- tmp |>
-  group_by(`Agency Name`) |>
+  group_by(agency_name) |>
   summarise(total_savings = sum(savings)) |>
   filter(total_savings > 0)
 
@@ -473,7 +487,7 @@ We will then compare the results against the annual payroll per year to see the 
 # TODO Get rid of all the TMPs
 
 tmp <- cleaned |>
-  group_by(fiscal_year, `Agency Name`, `Title / Job Description`) |>
+  group_by(fiscal_year, agency_name, title_description) |>
   summarize(
     average_base_annual_pay = mean(base_annual_pay, ),
     total_base_annual_pay = sum(base_annual_pay),
@@ -495,7 +509,7 @@ tmp <- cleaned |>
 total_savings <- sum(tmp$savings)
 
 total_savings_by_agency <- tmp |>
-  group_by(`Agency Name`) |>
+  group_by(agency_name) |>
   summarize(agency_savings = sum(savings))
 ```
 
@@ -533,7 +547,6 @@ In total, allocating a pay increase in this manner is estimated to save the City
 
 [^4]: https://coconuts.co/singapore/features/million-dollar-question-do-singapores-ministers-deserve-a-raise/
 
-[^5]: https://data.cityofnewyork.us/City-Government/Citywide-Payroll-Data-Fiscal-Year-/k397-673e/about_data
 
 ```{r}
 #| output: true
