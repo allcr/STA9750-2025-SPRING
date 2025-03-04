@@ -3,6 +3,7 @@ title: "A Review of the New York City Payroll with Reccomendations for Improveme
 format: 
   html: 
     code-fold: true
+engine: knitr
 execute:
   echo: true
   output: false
@@ -355,8 +356,7 @@ pay_data <- cleaned |>
   summarize(total_payroll = sum(gross_annual_pay))
 
 ggplot(data = pay_data, aes(x = fiscal_year, y = total_payroll)) +
-  geom_bar(stat = "identity") +
-  geom_col(fill = "steelblue") +
+  geom_bar(stat = "identity",fill='steelblue') +
   scale_y_continuous(
     name = "Payroll of New York City",
     labels = label_currency(scale_cut = cut_short_scale()),
@@ -368,7 +368,6 @@ ggplot(data = pay_data, aes(x = fiscal_year, y = total_payroll)) +
   ) +
   coord_cartesian(ylim = c(20000000000, NA))
 
-ggsave("historical_pay_per_year.png")
 ```
 
 ```{r}
@@ -379,10 +378,9 @@ pay_diff <- pay_2024 - pay_2014
 ```
 
 Over the last ten years, the total payroll of New York City has increased by `{r} dollar(pay_diff$total_payroll)`, from `{r} dollar(pay_2014$total_payroll)`in 2014 to `{r} dollar(pay_2024$total_payroll)` in 2024. 
-![Ten Years of Historical Pay]("historical_pay_per_year.png")
 
 # Proposals to reduce expenditure 
-## Proposal 1: Introduce cap on the Mayor'ss salary
+## Proposal 1: Introduce cap on the Mayor's salary
 
 ```{r}
 eric_adams_data <- cleaned |>

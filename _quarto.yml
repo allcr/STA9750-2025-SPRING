@@ -18,6 +18,8 @@ format:
   html:
     theme: yeti
     toc: true
+    fig-format: png
+    fig-dpi: 300
 
 editor:
   mode: source
