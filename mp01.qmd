@@ -1,4 +1,4 @@
----
+ ---
 title: "A Review of the New York City Payroll with Reccomendations for Improvement from the Commission to Analyze Taxpayer Spending (Mini Project 1)"
 format: 
   html: 
@@ -162,7 +162,9 @@ cleaned <- ALL_DATA |>
   filter(gross_annual_pay > 0) |>
   filter(!is.na(last_name))
 
-rm(ALL_DATA)
+
+
+#rm(ALL_DATA)
 ```
 
 The commission  will use the NYC Payroll data with the specified data dictionary found [here](https://data.cityofnewyork.us/City-Government/Citywide-Payroll-Data-Fiscal-Year-/k397-673e). The Commission has annualized the base pay rate reported in the city data. This analysis, at times, will also rely on the gross annual pay as recommended in the notes attached to the data dictionary. 
@@ -377,10 +379,25 @@ pay_2024 <- pay_data |> filter(fiscal_year == 2024)|> select(total_payroll)
 pay_diff <- pay_2024 - pay_2014
 ```
 
-Over the last ten years, the total payroll of New York City has increased by `{r} dollar(pay_diff$total_payroll)`, from `{r} dollar(pay_2014$total_payroll)`in 2014 to `{r} dollar(pay_2024$total_payroll)` in 2024. 
+Over the last ten years, the total base annual payroll of New York City has increased by `{r} dollar(pay_diff$total_payroll)`, from `{r} dollar(pay_2014$total_payroll)`in 2014 to `{r} dollar(pay_2024$total_payroll)` in 2024. 
 
 # Proposals to reduce expenditure 
-## Proposal 1: Introduce cap on the Mayor's salary
+Before proceeding we must establish our base value. We will use the total recorded payroll for 2023 as this is the last full year recorded in the data set. 
+
+```{r}
+high_water_mark <- cleaned |> 
+  filter(fiscal_year == 2023) |> 
+  select(gross_annual_pay) |>
+  sum()
+```
+
+
+Our benchmark for all years will be  `{r} dollar(high_water_mark)` from 2023. When useful or informative, we will look at data from other years.  
+
+## Proposal 1: Introduce cap based on the Mayor's salary
+
+We will review the proposal to make cap all salaries within the city at the pay rate of the mayor.  It will be helpful to first see the annual gross salary paid to the currency mayor Eric L. Adams as he is present in the data for multiple years and has held multiple jobs within the city.  
+
 
 ```{r}
 eric_adams_data <- cleaned |>
@@ -398,7 +415,7 @@ ead <- eric_adams_data |>
   summarize(sum_salary = sum(gross_annual_pay))
 
 ggplot(ead, mapping = aes(x = fiscal_year, y = sum_salary)) +
-  geom_bar(stat = "identity") +
+  geom_bar(stat = "identity", fill="steelblue") +
   scale_y_continuous(
     name = "Annual Salary of Eric Adams",
     labels = label_currency(scale_cut = cut_short_scale()),
@@ -410,29 +427,78 @@ ggplot(ead, mapping = aes(x = fiscal_year, y = sum_salary)) +
   )
 ```
 
+Eric Adams was elected as mayor in the 2021 election. It is important to note that his pay for 2022 records his (now) current pay as well as the pay for his previous role as the Brooklyn Borough President. We do see a marked increase in his annual gross pay from 2015 to 2024.
+
+
+As defined in the New York City Charter[^5], the mayor is entitled to a salary of $258,750 per year. We will use this value as the maximum gross annual pay for all employees. 
+
+
+```{r}
+
+mayor_cap_2023 <-cleaned |> 
+  filter(fiscal_year==2023) |>
+  mutate(gross_annual_pay = case_when(gross_annual_pay>258750 ~ 258750,
+                                    TRUE ~ gross_annual_pay)) |>
+  select(gross_annual_pay) |>
+  sum()
+
+```
+
+By capping the total gross annual pay to match that of the mayor, the expected payroll would have been `{r} dollar(mayor_cap_2023)`, representing a savings of `{r} dollar(high_water_mark-mayor_cap_2023)`. 
+
+This value is not as high as we the Commission had hoped. Let us see what the  distribution of gross annual pay for the year 2023 looks like. 
+
+
+```{r}
+
+
+cleaned |> 
+  filter(fiscal_year==2023)|>
+  select(pay_basis,gross_annual_pay) |>
+  ggplot(aes(x=gross_annual_pay)) + geom_histogram() +
+    scale_y_continuous(
+    name = "Count of Employees at Salary Level",
+    breaks = scales::pretty_breaks(n = 6)
+  ) +
+  scale_x_continuous(
+    name = "Gross Annual Pay",
+    labels = label_currency(scale_cut = cut_short_scale()),
+    breaks = scales::pretty_breaks(n = 10)
+  ) +
+geom_vline(aes(xintercept=258750),
+            color="blue", linetype="dashed", size=1)
+
+```
+Here is the distribution of all employee pay for 2023, with the mayoral salary indicated with the blue line. We can see that there are significantly few people making more than the mayoral salary compared to those making less than the mayoral salary. This includes *ALL* employee types. Let us limit our analysis to only the annuallly salaried city employees.  
+
+
+```{r}
+cleaned |> 
+  filter(fiscal_year==2023,
+         pay_basis %in% c("Per Annum","Prorated Annual"))|>
+  select(pay_basis,gross_annual_pay) |>
+  ggplot(aes(x=gross_annual_pay)) + geom_histogram() +
+    scale_y_continuous(
+    name = "Count of Employees at Annual Salary Level",
+    breaks = scales::pretty_breaks(n = 6)
+  ) +
+  scale_x_continuous(
+    name = "Gross Annual Pay",
+    labels = label_currency(scale_cut = cut_short_scale()),
+    breaks = scales::pretty_breaks(n = 10)
+  ) +
+geom_vline(aes(xintercept=258750),
+            color="blue", linetype="dashed", size=1)
+```
+When restricting our view to annually salaried employees, we can see the limits of the proposal. There are significantly more people making less than the Mayor's salary compared to the number of people making more than the mayor. 
+
+## Proposal 2: Increase regular capacity by hiring more employees to reduce overtime expenditure
+We will use a 2000 hour work week as the base line measurement.
 
 ```{r}
 #| output: true
 tmp <- cleaned |>
-  filter(title_description == "Mayor") |>
-  group_by(fiscal_year) |>
-  summarize(total_payroll_costs = sum(gross_annual_pay))
-
-tmp |>
-  rename(
-    "Total Payroll" = total_payroll_costs,
-    "Fiscal Year" = fiscal_year
-  ) |>
-  kable(format.args = list(big.mark = ","))
-```
-We can see that the total annual payroll disbursed for the Mayor of New York City is nearly as high as the highest paid employee in New York City. In fact the average annual salary for the Mayor over the last ten years is `{r} dollar(mean(tmp$total_payroll_costs))`. The total paid between 2014 and 2024 is `{r} dollar(sum(tmp$total_payroll_costs))`. Given that the total payroll is in the billions for New York City, it does not make sense to cap the salary of the Mayor as the primary means to reduce the city budget. On the contrary, it may be beneficial to _increase_ the pay of the Mayor to help reduce the risk of corruption.[^4]
-
-## Proposal 2: Increase regular capacity by hiring more employees to reduce overtime expenditure
-To calculate how many employees will be needed, we will first add the total amount of 
-We will use a 2000 hour work week as the base line measurement.
-
-```{r}
-tmp <- cleaned |>
+  filter(fiscal_year==2023) |>
   group_by(agency_name, title_description) |>
   summarize(
     average_base_annual_pay = mean(base_annual_pay, ),
@@ -462,7 +528,9 @@ total_savings_by_agency <- tmp |>
 
 total_savings_by_agency |>
   slice_max(total_savings, n = 10) |>
-  kable(format.args = list(big.mark = ","))
+  rename("Agency Name"=agency_name,
+         "Total Savings"=total_savings) |> 
+  kable(format.args = list(big.mark = ",")) 
 
 
 
@@ -523,13 +591,17 @@ tmp |>
   summarize(savings = sum(savings, na.rm = TRUE)) |>
   rename(
     "Total Annual Payroll Savings" = savings,
-    "Fiscal Year" = fiscal_year
-  ) |>
-  kable(format.args = list(big.mark = ","))
+    "Fiscal Year" = fiscal_year)
+
+  
+  tmp$`Total Annual Payroll Savings` <- format(tmp$`Total Annual Payroll Savings`, big.mark = ",") 
+
+  kable(tmp)
 ```
 
 
 ```{r}
+#| output: true
 # TODO check this
 total_savings_by_agency |>
   slice_max(agency_savings, n = 10) |>
@@ -547,7 +619,9 @@ In total, allocating a pay increase in this manner is estimated to save the City
 
 [^3]: https://www.ocb-nyc.org/about/
 
-[^4]: https://coconuts.co/singapore/features/million-dollar-question-do-singapores-ministers-deserve-a-raise/
+
+
+[^5]: https://codelibrary.amlegal.com/codes/newyorkcity/latest/NYCcharter/0-0-0-9
 
 
 ```{r}
