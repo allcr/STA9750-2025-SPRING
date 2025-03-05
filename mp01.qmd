@@ -450,8 +450,10 @@ This value is not as high as we the Commission had hoped. Let us see what the  d
 
 
 ```{r}
-
-
+#| output: true
+#| label: 2023_histogram
+#| fig-cap: "HIstogram of Payroll for Fiscal Year 2023"
+#| warning: false
 cleaned |> 
   filter(fiscal_year==2023)|>
   select(pay_basis,gross_annual_pay) |>
@@ -469,10 +471,15 @@ geom_vline(aes(xintercept=258750),
             color="blue", linetype="dashed", size=1)
 
 ```
-Here is the distribution of all employee pay for 2023, with the mayoral salary indicated with the blue line. We can see that there are significantly few people making more than the mayoral salary compared to those making less than the mayoral salary. This includes *ALL* employee types. Let us limit our analysis to only the annuallly salaried city employees.  
+Here is the distribution of all employee pay for 2023, with the mayoral salary indicated with the blue line. We can see that there are significantly few people making more than the mayoral salary compared to those making less than the mayoral salary. This includes *ALL* employee types. Let us limit our analysis to only the annually salaried city employees.  
 
 
 ```{r}
+#| output: true
+#| label: 2023_histogram_annual_salaried
+#| fig-cap: "Histogram of Payroll for annually Salaried for Fiscal Year 2023"
+#| warning: false
+
 cleaned |> 
   filter(fiscal_year==2023,
          pay_basis %in% c("Per Annum","Prorated Annual"))|>
@@ -553,8 +560,6 @@ We will then compare the results against the annual payroll per year to see the 
 
 ```{r}
 #| output: true
-
-# TODO Get rid of all the TMPs
 
 tmp <- cleaned |>
   group_by(fiscal_year, agency_name, title_description) |>
