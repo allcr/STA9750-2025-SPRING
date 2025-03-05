@@ -1214,39 +1214,79 @@ override using the `.groups` argument.</code></pre>
 </div>
 <p>We can see in the below table that the savings are significant each year.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a>tmp <span class="sc">|&gt;</span></span>
+<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a>tmp <span class="ot">&lt;-</span> tmp <span class="sc">|&gt;</span></span>
 <span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(fiscal_year) <span class="sc">|&gt;</span></span>
 <span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">savings =</span> <span class="fu">sum</span>(savings, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)) <span class="sc">|&gt;</span></span>
 <span id="cb47-4"><a href="#cb47-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(</span>
 <span id="cb47-5"><a href="#cb47-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Total Annual Payroll Savings"</span> <span class="ot">=</span> savings,</span>
-<span id="cb47-6"><a href="#cb47-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Fiscal Year"</span> <span class="ot">=</span> fiscal_year)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 11 × 2
-   `Fiscal Year` `Total Annual Payroll Savings`
-           &lt;int&gt;                          &lt;dbl&gt;
- 1          2014                     243137378.
- 2          2015                     237757751.
- 3          2016                     333201300.
- 4          2017                     358503107.
- 5          2018                     359469859.
- 6          2019                     361231410.
- 7          2020                     331290228.
- 8          2021                     354099678.
- 9          2022                     480630098.
-10          2023                     482879010.
-11          2024                     638606711.</code></pre>
+<span id="cb47-6"><a href="#cb47-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Fiscal Year"</span> <span class="ot">=</span> fiscal_year)</span>
+<span id="cb47-7"><a href="#cb47-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-8"><a href="#cb47-8" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb47-9"><a href="#cb47-9" aria-hidden="true" tabindex="-1"></a>tmp<span class="sc">$</span><span class="st">`</span><span class="at">Total Annual Payroll Savings</span><span class="st">`</span> <span class="ot">&lt;-</span> <span class="fu">format</span>(tmp<span class="sc">$</span><span class="st">`</span><span class="at">Total Annual Payroll Savings</span><span class="st">`</span>, <span class="at">big.mark =</span> <span class="st">","</span>) </span>
+<span id="cb47-10"><a href="#cb47-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-11"><a href="#cb47-11" aria-hidden="true" tabindex="-1"></a><span class="fu">kable</span>(tmp)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: right;">Fiscal Year</th>
+<th style="text-align: left;">Total Annual Payroll Savings</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">2014</td>
+<td style="text-align: left;">243,137,378</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2015</td>
+<td style="text-align: left;">237,757,751</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2016</td>
+<td style="text-align: left;">333,201,300</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2017</td>
+<td style="text-align: left;">358,503,107</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2018</td>
+<td style="text-align: left;">359,469,859</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2019</td>
+<td style="text-align: left;">361,231,410</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2020</td>
+<td style="text-align: left;">331,290,228</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2021</td>
+<td style="text-align: left;">354,099,678</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2022</td>
+<td style="text-align: left;">480,630,098</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2023</td>
+<td style="text-align: left;">482,879,010</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2024</td>
+<td style="text-align: left;">638,606,711</td>
+</tr>
+</tbody>
+</table>
 </div>
-<div class="sourceCode cell-code" id="cb49"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a>  tmp<span class="sc">$</span><span class="st">`</span><span class="at">Total Annual Payroll Savings</span><span class="st">`</span> <span class="ot">&lt;-</span> <span class="fu">format</span>(tmp<span class="sc">$</span><span class="st">`</span><span class="at">Total Annual Payroll Savings</span><span class="st">`</span>, <span class="at">big.mark =</span> <span class="st">","</span>) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stderr">
-<pre><code>Warning: Unknown or uninitialised column: `Total Annual Payroll Savings`.</code></pre>
-</div>
-<div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a> <span class="co"># kable(tmp)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb52"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a><span class="co"># </span><span class="al">TODO</span><span class="co"> check this</span></span>
-<span id="cb52-2"><a href="#cb52-2" aria-hidden="true" tabindex="-1"></a>total_savings_by_agency <span class="sc">|&gt;</span></span>
-<span id="cb52-3"><a href="#cb52-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">slice_max</span>(agency_savings, <span class="at">n =</span> <span class="dv">10</span>) <span class="sc">|&gt;</span></span>
-<span id="cb52-4"><a href="#cb52-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">kable</span>(<span class="at">digits =</span> <span class="dv">0</span>, <span class="at">format.args =</span> <span class="fu">list</span>(<span class="at">big.mark =</span> <span class="st">","</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb48"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a><span class="co"># </span><span class="al">TODO</span><span class="co"> check this</span></span>
+<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a>total_savings_by_agency <span class="sc">|&gt;</span></span>
+<span id="cb48-3"><a href="#cb48-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">slice_max</span>(agency_savings, <span class="at">n =</span> <span class="dv">10</span>) <span class="sc">|&gt;</span></span>
+<span id="cb48-4"><a href="#cb48-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">kable</span>(<span class="at">digits =</span> <span class="dv">0</span>, <span class="at">format.args =</span> <span class="fu">list</span>(<span class="at">big.mark =</span> <span class="st">","</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <table class="caption-top table table-sm table-striped small">
 <thead>
@@ -1302,10 +1342,10 @@ override using the `.groups` argument.</code></pre>
 </div>
 <p>In total, allocating a pay increase in this manner is estimated to save the City NA. We can see the ten agencies that save the most money using this method.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb53"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true" tabindex="-1"></a>time_vec <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Last Updated:"</span>, <span class="fu">format</span>(<span class="fu">Sys.time</span>(), <span class="st">"%Y-%m-%d at %H:%M%p"</span>))</span>
-<span id="cb53-2"><a href="#cb53-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="fu">paste</span>(time_vec, <span class="st">" "</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb49"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a>time_vec <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Last Updated:"</span>, <span class="fu">format</span>(<span class="fu">Sys.time</span>(), <span class="st">"%Y-%m-%d at %H:%M%p"</span>))</span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="fu">paste</span>(time_vec, <span class="st">" "</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Last Updated:   2025-03-04 at 20:03PM  </code></pre>
+<pre><code>Last Updated:   2025-03-04 at 20:07PM  </code></pre>
 </div>
 </div>
 

@@ -548,13 +548,14 @@ The Commission is pleased to report that `{r} dollar(total_savings)` can be save
 
 
 ## Proposal 3: Remove overtime pay and increase salaries by the median or average overtime paid
+
 Overtime expenditure is a significant portion of the overall payroll for New York City. We will review the financial impact of eliminating overtime all together and replacing it with a one time pay raise. This one time raise will be equal to the _lower_ value of the median overtime or the average overtime paid per agency and description. 
 
 The annualized base pay and the total overtime paid will be used as the base rate instead of the gross rate. This will simplify our analysis, but we lose a degree of accuracy by not including the total other pay for each employee.  
 
-We will attempt to back-date this analysis by calculating the mean and median overtime paid per agency, job title, and fiscal year. We will then add the _lower_ of the median and the mean to the annualized base pay to create the proposed pay rate. The amount of savings is calculated subtracting the proposed pay rate from the sum of the annualized base pay and the total over paid. 
+We will attempt to back-date this analysis by calculating the median overtime paid per agency, job title, and fiscal year. We will then add the median the annualized base pay to create the proposed pay rate. The amount of savings is calculated subtracting the proposed pay rate from the sum of the annualized base pay and the total over paid. 
 
-We will then compare the results against the annual payroll per year to see the total savings had this methodology been adopted in the past. 
+We will then compare the results against the annual payroll per year to see the total savings had this methodology been adopted in the past. We will still use 2023 as our high water mark. 
 
    
 
@@ -567,7 +568,6 @@ tmp <- cleaned |>
     average_base_annual_pay = mean(base_annual_pay, ),
     total_base_annual_pay = sum(base_annual_pay),
     total_over_time_paid = sum(total_ot_paid),
-    average_over_time_paid = mean(total_ot_paid),
     median_over_time_paid = median(total_ot_paid),
     total_ot_hours = sum(ot_hours),
     number_employees = n(),
@@ -591,7 +591,7 @@ total_savings_by_agency <- tmp |>
 We can see in the below table that the savings are significant each year.
 
 ```{r}
-tmp |>
+tmp <- tmp |>
   group_by(fiscal_year) |>
   summarize(savings = sum(savings, na.rm = TRUE)) |>
   rename(
@@ -599,9 +599,9 @@ tmp |>
     "Fiscal Year" = fiscal_year)
 
   
-  tmp$`Total Annual Payroll Savings` <- format(tmp$`Total Annual Payroll Savings`, big.mark = ",") 
+tmp$`Total Annual Payroll Savings` <- format(tmp$`Total Annual Payroll Savings`, big.mark = ",") 
 
- # kable(tmp)
+kable(tmp)
 ```
 
 
@@ -610,6 +610,10 @@ tmp |>
 # TODO check this
 total_savings_by_agency |>
   slice_max(agency_savings, n = 10) |>
+  rename(
+    "Agency Name"=agency_name,
+    "Agency Savings"=agency_savings
+  ) |>
   kable(digits = 0, format.args = list(big.mark = ","))
 ```
 
