@@ -601,7 +601,7 @@ tmp |>
   
   tmp$`Total Annual Payroll Savings` <- format(tmp$`Total Annual Payroll Savings`, big.mark = ",") 
 
-  kable(tmp)
+ # kable(tmp)
 ```
 
 
