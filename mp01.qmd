@@ -19,6 +19,10 @@ The Commission has determined that capping the salary for the Mayor will not lea
 # Research
 
 ```{r}
+#| label: load_and_clean_data
+
+# TODO Get Rid of all the temps 
+
 if (!file.exists("data/mp01/nyc_payroll_export.csv")) {
   dir.create("data/mp01", showWarnings = FALSE, recursive = TRUE)
 
@@ -157,14 +161,15 @@ cleaned <- ALL_DATA |>
       pay_basis == "Per Day" ~ base_salary * regular_hours / 7.5,
       pay_basis == "Prorated Annual" ~ base_salary
     ),
-    gross_annual_pay = regular_gross_paid + total_ot_paid + total_other_pay
+    gross_annual_pay = regular_gross_paid + total_ot_paid + total_other_pay,
+    ot_hours= abs(ot_hours)
   ) |>
   filter(gross_annual_pay > 0) |>
   filter(!is.na(last_name))
 
 
 
-#rm(ALL_DATA)
+rm(ALL_DATA)
 ```
 
 The commission  will use the NYC Payroll data with the specified data dictionary found [here](https://data.cityofnewyork.us/City-Government/Citywide-Payroll-Data-Fiscal-Year-/k397-673e). The Commission has annualized the base pay rate reported in the city data. This analysis, at times, will also rely on the gross annual pay as recommended in the notes attached to the data dictionary. 
@@ -175,12 +180,15 @@ The Commission has also corrected data for Custodial Engineers within the city. 
 
 The Commission  has removed records from the analysis where the gross annual pay is less than zero or there is no last name recorded in the data set. The Commission believes that these records require further information to properly address. However, this information is not currently available. 
 
+It is also assumed that negative overtime hours are a data entry issue and should be positive values. 
+
 
 ## Which job title has the highest base rate of pay?
 The commission has been asked which role within New York City has the highest base rate of pay. We will be using the annualized base rate of pay and not the gross annual pay for this analysis. 
 
 
 ```{r}
+#| label: q1
 #| output: true
 tmp <- cleaned |>
   group_by(title_description) |>
@@ -201,10 +209,9 @@ The job title with the highest average annual base pay is `{r} tmp$title_descrip
 
 The commission has decided to review this using the total gross pay as calculated by the methodology within the data dictionary provided by the city and not the annualized base rate of pay. 
 
-To do so, we 
- 
 
 ```{r}
+#| label: q2
 #| output: true
 tmp <- cleaned |>
   select(fiscal_year, agency_name, title_description, last_name, first_name, mid_init, gross_annual_pay) |>
@@ -223,6 +230,7 @@ The Commission has found that the below employees have logged the largest amount
 In this instance, our analysis is hurt but the lack of unique employee identifiers. It is not immediately apparent why. 
 
 ```{r}
+#| label: q3_part_1
 #| output: true
 cleaned |>
   group_by(fiscal_year, agency_name, last_name, first_name, mid_init, title_description) |>
@@ -249,8 +257,9 @@ cleaned |>
 ### Employee with Highest Total Amount of Logged Overtime Hours 
 
 ```{r}
+#| label: q3_part_2
 #| output: true
-tmp <- cleaned |>
+cleaned |>
   group_by(agency_name, last_name, first_name, mid_init, title_description) |>
   summarize(total_ot_hours = sum(ot_hours)) |>
   ungroup() |>
@@ -273,6 +282,7 @@ John Castillo, a Correctional Officer in the Department of Corrections, has logg
 ## Which agency has the highest average total annual gross payroll?
 
 ```{r}
+#| label: q4
 #| output: true
 cleaned |>
   group_by(aggregated_agency_name) |>
@@ -290,6 +300,7 @@ The Office of Collective Bargaining[^1] has the highest average gross salary of 
 ## Which agency has the most employees on payroll each year?
 
 ```{r}
+#| label: q5
 #| output: true
 tmp <- cleaned |>
   group_by(fiscal_year, aggregated_agency_name) |>
@@ -311,6 +322,7 @@ The Department of Education has the most employees of any department[^1] within 
 
 ## Which agency has the highest average overtime usage?
 ```{r}
+#| label: q6
 #| output: true
 cleaned |>
   group_by(agency_name) |>
@@ -334,6 +346,7 @@ This was determined by taking the average amount of overtime hours logged by age
 The average salary of employees outside of the five boroughs is listed below. The commission is limited as the there is a catch all category called "Other". Further granularity is needed for future analysis. We leave out any employee where the work location  was recorded as `{r} NA`. 
 
 ```{r}
+#| label: q7
 #| output: true
 cleaned |>
   filter(work_location_borough %in% c("Albany", "Other", "Orange")) |>
@@ -341,7 +354,7 @@ cleaned |>
   summarize(avg_gross_annual_pay = mean(gross_annual_pay)) |>
   rename(
     "Work Location (Borough)" = work_location_borough,
-    "Average Gross Annual Pay" = avg_gross_annual_pay
+    "Average Gross Annual Pay (USD)" = avg_gross_annual_pay
   ) |>
   kable(digits = 0, format.args = list(big.mark = ","))
 ```
@@ -360,7 +373,7 @@ pay_data <- cleaned |>
 ggplot(data = pay_data, aes(x = fiscal_year, y = total_payroll)) +
   geom_bar(stat = "identity",fill='steelblue') +
   scale_y_continuous(
-    name = "Payroll of New York City",
+    name = "Payroll of New York City (USD)",
     labels = label_currency(scale_cut = cut_short_scale()),
     breaks = scales::pretty_breaks(n = 6)
   ) +
@@ -373,6 +386,7 @@ ggplot(data = pay_data, aes(x = fiscal_year, y = total_payroll)) +
 ```
 
 ```{r}
+#| label: pay_roll_differences
 pay_2014 <- pay_data |> filter(fiscal_year == 2014)|> select(total_payroll)
 pay_2024 <- pay_data |> filter(fiscal_year == 2024)|> select(total_payroll)
 
@@ -382,9 +396,10 @@ pay_diff <- pay_2024 - pay_2014
 Over the last ten years, the total base annual payroll of New York City has increased by `{r} dollar(pay_diff$total_payroll)`, from `{r} dollar(pay_2014$total_payroll)`in 2014 to `{r} dollar(pay_2024$total_payroll)` in 2024. 
 
 # Proposals to reduce expenditure 
-Before proceeding we must establish our base value. We will use the total recorded payroll for 2023 as this is the last full year recorded in the data set. 
+Before proceeding we must establish our base value. We will use the total recorded payroll for 2023 as this is the last full year recorded in the data set. The last update to the dataset was in October 2023. As such,overtime pay and other pay may not be accurate for Fiscal Year 2024 as of writing.  
 
 ```{r}
+#| label: calc_high_water_mark
 high_water_mark <- cleaned |> 
   filter(fiscal_year == 2023) |> 
   select(gross_annual_pay) |>
@@ -400,24 +415,21 @@ We will review the proposal to make cap all salaries within the city at the pay 
 
 
 ```{r}
-eric_adams_data <- cleaned |>
-  filter(last_name == "Adams", first_name == "Eric", mid_init == "L")
-```
-
-```{r}
 #| output: true
 #| label: eric_adams_pay
 #| fig-cap: "Eric L. Adams Payroll per Year"
 #| warning: false
 
-ead <- eric_adams_data |>
-  group_by(fiscal_year) |>
-  summarize(sum_salary = sum(gross_annual_pay))
+eric_adams_data <- cleaned |>
+  filter(last_name == "Adams", first_name == "Eric", mid_init == "L") 
 
-ggplot(ead, mapping = aes(x = fiscal_year, y = sum_salary)) +
+eric_adams_data |>
+  group_by(fiscal_year) |>
+  summarize(sum_salary = sum(gross_annual_pay))|>
+  ggplot( mapping = aes(x = fiscal_year, y = sum_salary)) +
   geom_bar(stat = "identity", fill="steelblue") +
   scale_y_continuous(
-    name = "Annual Salary of Eric Adams",
+    name = "Annual Salary of Eric Adams (USD)",
     labels = label_currency(scale_cut = cut_short_scale()),
     breaks = scales::pretty_breaks(n = 6)
   ) +
@@ -434,7 +446,7 @@ As defined in the New York City Charter[^5], the mayor is entitled to a salary o
 
 
 ```{r}
-
+#| label: proposal_1
 mayor_cap_2023 <-cleaned |> 
   filter(fiscal_year==2023) |>
   mutate(gross_annual_pay = case_when(gross_annual_pay>258750 ~ 258750,
@@ -446,7 +458,7 @@ mayor_cap_2023 <-cleaned |>
 
 By capping the total gross annual pay to match that of the mayor, the expected payroll would have been `{r} dollar(mayor_cap_2023)`, representing a savings of `{r} dollar(high_water_mark-mayor_cap_2023)`. 
 
-This value is not as high as we the Commission had hoped. Let us see what the  distribution of gross annual pay for the year 2023 looks like. 
+This value is not as high as we the Commission had hoped. Let us see what the distribution of gross annual pay for the year 2023 looks like. 
 
 
 ```{r}
@@ -459,7 +471,7 @@ cleaned |>
   select(pay_basis,gross_annual_pay) |>
   ggplot(aes(x=gross_annual_pay)) + geom_histogram() +
     scale_y_continuous(
-    name = "Count of Employees at Salary Level",
+    name = "Count of Employees at Salary Level USD",
     breaks = scales::pretty_breaks(n = 6)
   ) +
   scale_x_continuous(
@@ -471,7 +483,7 @@ geom_vline(aes(xintercept=258750),
             color="blue", linetype="dashed", size=1)
 
 ```
-Here is the distribution of all employee pay for 2023, with the mayoral salary indicated with the blue line. We can see that there are significantly few people making more than the mayoral salary compared to those making less than the mayoral salary. This includes *ALL* employee types. Let us limit our analysis to only the annually salaried city employees.  
+Here is the distribution of all employee pay for 2023, with the mayoral salary indicated with the blue line. We can see that there are significantly few people making more than the mayoral salary compared to those making less than the mayoral salary. This includes all employee types. Let us limit our analysis to only the annually salaried city employees.  
 
 
 ```{r}
@@ -497,18 +509,20 @@ cleaned |>
 geom_vline(aes(xintercept=258750),
             color="blue", linetype="dashed", size=1)
 ```
-When restricting our view to annually salaried employees, we can see the limits of the proposal. There are significantly more people making less than the Mayor's salary compared to the number of people making more than the mayor. 
+When restricting our view to annually salaried employees, we can see the limits of the proposal. There are significantly more people making less than the Mayor's salary compared to the number of people making more than the mayor. This proposal has limited impact, but can be implemented without causing significant disruption. 
 
 ## Proposal 2: Increase regular capacity by hiring more employees to reduce overtime expenditure
-We will use a 2000 hour work week as the base line measurement.
+
+We will use a 2000 hour threshold for hiring one more employee, an eight hour work day for 250 business days. Again we will be using 2023 as our benchmark.  We will be using the annualized base pay and the total overtime paid for this analysis and not the total gross pay. 
 
 ```{r}
+#| label: proposal_2
 #| output: true
 tmp <- cleaned |>
   filter(fiscal_year==2023) |>
   group_by(agency_name, title_description) |>
   summarize(
-    average_base_annual_pay = mean(base_annual_pay, ),
+    average_base_annual_pay = mean(base_annual_pay),
     total_base_annual_pay = sum(base_annual_pay),
     total_over_time_paid = sum(total_ot_paid),
     total_ot_hours = sum(ot_hours)
@@ -517,52 +531,57 @@ tmp <- cleaned |>
     number_new_full_time_employees = total_ot_hours %/% 2000,
     ot_paid_converted_to_regular = total_over_time_paid / 1.5,
     new_employee_cost = average_base_annual_pay * number_new_full_time_employees,
+    new_employee_savings = ot_paid_converted_to_regular - new_employee_cost,
     is_new_employee_outright_cheaper = case_when(
       number_new_full_time_employees == 0 ~ 0,
       ot_paid_converted_to_regular > new_employee_cost ~ 1,
       TRUE ~ 0
-    ),
-    savings = case_when(
-      is_new_employee_outright_cheaper == 1 ~ ot_paid_converted_to_regular - new_employee_cost,
-      TRUE ~ 0
-    )
-  )
+    ))
 
-total_savings_by_agency <- tmp |>
-  group_by(agency_name) |>
-  summarise(total_savings = sum(savings)) |>
-  filter(total_savings > 0)
+total_savings <- sum(tmp$total_savings, na.rm=TRUE)
 
-total_savings_by_agency |>
+
+tmp |>
+  group_by(agency_name,title_description,total_ot_hours) |>
+  summarise(
+            total_savings = sum(new_employee_savings,na.rm=TRUE),
+            total_number_new_employees = sum(number_new_full_time_employees,na.rm=TRUE)) |>
+  filter(total_number_new_employees != 0) |>
+  ungroup() |>
   slice_max(total_savings, n = 10) |>
-  rename("Agency Name"=agency_name,
-         "Total Savings"=total_savings) |> 
-  kable(format.args = list(big.mark = ",")) 
+   rename("Agency Name"=agency_name,
+        "Total Savings (USD)"=total_savings,
+        "Total Overtime Hours"=total_ot_hours,
+        "Title / Job Description)" = title_description,
+        "Number of New Employees"=total_number_new_employees) |> 
+ kable(format.args = list(big.mark = ",")) 
 
 
 
-total_savings <- sum(total_savings_by_agency$total_savings)
 ```
 
-The Commission is pleased to report that `{r} dollar(total_savings)` can be saved by hiring new employees to reduce overtime expenditure. The top ten departments that benefit from this action are in the above table. 
+The Commission finds that `{r} dollar(total_savings)` can be saved by hiring new employees to reduce overtime expenditure. The top ten departments that benefit from this action are in the above table. 
+
+The above table shows the savings and overtime hours worked for each job and agency. We can see firefighters, sanitation workers, police officiers, and correctional officers are all at the top of the list for agencies that can save money by implementing this strategy. 
 
 
 ## Proposal 3: Remove overtime pay and increase salaries by the median or average overtime paid
 
-Overtime expenditure is a significant portion of the overall payroll for New York City. We will review the financial impact of eliminating overtime all together and replacing it with a one time pay raise. This one time raise will be equal to the _lower_ value of the median overtime or the average overtime paid per agency and description. 
+Overtime expenditure is a significant portion of the overall payroll for New York City. We will review the financial impact of eliminating overtime all together and replacing it with a one time pay raise. This one time raise will be equal to the median overtime or the average overtime paid per agency and description. 
 
 The annualized base pay and the total overtime paid will be used as the base rate instead of the gross rate. This will simplify our analysis, but we lose a degree of accuracy by not including the total other pay for each employee.  
 
-We will attempt to back-date this analysis by calculating the median overtime paid per agency, job title, and fiscal year. We will then add the median the annualized base pay to create the proposed pay rate. The amount of savings is calculated subtracting the proposed pay rate from the sum of the annualized base pay and the total over paid. 
+We will attempt to back-date this analysis by calculating the median overtime paid per agency, job title, and fiscal year. We will then add the median the annualized base pay to create the proposed pay rate. The amount of savings is calculated subtracting the proposed pay rate from the sum of the annualized base pay and the total over paid.
 
-We will then compare the results against the annual payroll per year to see the total savings had this methodology been adopted in the past. We will still use 2023 as our high water mark. 
+The commission will first present the results for 2023 and then compare the results against the annual payroll per year to see the total savings had this methodology been adopted in the past. 
 
-   
+
 
 ```{r}
 #| output: true
-
+#| label: proposal_3
 tmp <- cleaned |>
+  filter(fiscal_year==2023) |>
   group_by(fiscal_year, agency_name, title_description) |>
   summarize(
     average_base_annual_pay = mean(base_annual_pay, ),
@@ -580,45 +599,57 @@ tmp <- cleaned |>
   )
 
 
-total_savings <- sum(tmp$savings)
+total_savings_median_pay_raise_2023 <- sum(tmp$savings, na.rm=TRUE)
 
-total_savings_by_agency <- tmp |>
-  group_by(agency_name) |>
-  summarize(agency_savings = sum(savings))
+tmp <- tmp |>
+  group_by(fiscal_year,agency_name) |>
+  summarize(agency_savings = sum(savings, na.rm=TRUE)) |> 
+  ungroup() |>
+  slice_max(agency_savings, n=10) |>
+     rename(
+       "Fiscal Year"=fiscal_year,
+       "Agency Name"=agency_name,
+        "Total Savings (USD)"=agency_savings) 
+
+tmp$`Total Savings (USD)` <- format(tmp$`Total Savings (USD)`, big.mark = ",")
+
+kable(tmp) 
 ```
+In total for 2023, `{r} dollar(total_savings_median_pay_raise_2023)` are saved. The top ten agencies 
 
-We can see in the below table that the savings are significant each year.
+
+We can see in the below table that the savings are significant each year, with a minimum saved of $188,159,454 saved in 2015 and a maximum saved of $612,766,377 in 2024. 
 
 ```{r}
-tmp <- tmp |>
+#| label: proposal_3_part_2
+
+tmp <- cleaned |>
+  group_by(fiscal_year, agency_name, title_description) |>
+  summarize(
+    average_base_annual_pay = mean(base_annual_pay,na.rm = TRUE ),
+    total_base_annual_pay = sum(base_annual_pay,na.rm = TRUE),
+    total_over_time_paid = sum(total_ot_paid,na.rm = TRUE),
+    median_over_time_paid = median(total_ot_paid,na.rm = TRUE),
+    total_ot_hours = sum(ot_hours),na.rm = TRUE,
+    number_employees = n(),
+    proposed_total_salary_increase = number_employees * median_over_time_paid
+  ) |>
+  mutate(
+    current_pay_total = total_base_annual_pay + total_over_time_paid,
+    proposed_pay_total = total_base_annual_pay + proposed_total_salary_increase,
+    savings = current_pay_total - proposed_pay_total
+  )|>
   group_by(fiscal_year) |>
   summarize(savings = sum(savings, na.rm = TRUE)) |>
   rename(
-    "Total Annual Payroll Savings" = savings,
+    "Total Annual Payroll Savings (USD)" = savings,
     "Fiscal Year" = fiscal_year)
 
   
-tmp$`Total Annual Payroll Savings` <- format(tmp$`Total Annual Payroll Savings`, big.mark = ",") 
+tmp$`Total Annual Payroll Savings (USD)` <- format(tmp$`Total Annual Payroll Savings (USD)`, big.mark = ",") 
 
 kable(tmp)
 ```
-
-
-```{r}
-#| output: true
-# TODO check this
-total_savings_by_agency |>
-  slice_max(agency_savings, n = 10) |>
-  rename(
-    "Agency Name"=agency_name,
-    "Agency Savings"=agency_savings
-  ) |>
-  kable(digits = 0, format.args = list(big.mark = ","))
-```
-
-
-In total, allocating a pay increase in this manner is estimated to save the City `{r} dollar(total_savings)`.  We can see the ten agencies that save the most money using this method. 
-
 
 
 
