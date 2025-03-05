@@ -571,8 +571,7 @@ tmp <- cleaned |>
     median_over_time_paid = median(total_ot_paid),
     total_ot_hours = sum(ot_hours),
     number_employees = n(),
-    smaller_of_two = min(average_over_time_paid, median_over_time_paid),
-    proposed_total_salary_increase = number_employees * smaller_of_two
+    proposed_total_salary_increase = number_employees * median_over_time_paid
   ) |>
   mutate(
     current_pay_total = total_base_annual_pay + total_over_time_paid,
