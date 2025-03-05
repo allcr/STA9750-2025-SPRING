@@ -1,4 +1,4 @@
- ---
+---
 title: "A Review of the New York City Payroll with Reccomendations for Improvement from the Commission to Analyze Taxpayer Spending (Mini Project 1)"
 format: 
   html: 
@@ -7,7 +7,7 @@ engine: knitr
 execute:
   echo: true
   output: false
-draft: False
+draft: false
 ---
 
 # Foreward
