@@ -14,14 +14,12 @@ draft: false
 In February 2025, the Commission to Analyze Taxpayer Spending was asked to analyze several questions of interest to the Mayor of New York City and the New York City Council regarding the budget for the City. In this document, we will present our findings to each of these questions. 
 
 # Executive Summary
-The Commission has determined that capping the salary for the Mayor will not lead to significant savings on the City payroll. The Commission has found sufficient evidence that increasing the number of employees per agency to reduce total overtime expenditure or replacing overtime altogether with a one time pay raise would have an impact on the city budget. 
+The Commission has determined that capping the salary for the Mayor will not lead to significant savings on the City payroll. The Commission has found sufficient evidence that increasing the number of employees per agency will reduce total expenditure when compared to paying overtime for an equivalent amount of hours worked.. We explore a radical proposal of replacing overtime with a one time raise based on the median overtime for employees which would result in significant savings. 
 
 # Research
 
 ```{r}
 #| label: load_and_clean_data
-
-# TODO Get Rid of all the temps 
 
 if (!file.exists("data/mp01/nyc_payroll_export.csv")) {
   dir.create("data/mp01", showWarnings = FALSE, recursive = TRUE)
@@ -116,8 +114,6 @@ if (!file.exists("data/mp01/nyc_payroll_export.csv")) {
 }
 
 
-
-
 cleaned <- ALL_DATA |>
   mutate(work_location_borough = replace(work_location_borough, work_location_borough == "Bronx", "BRONX")) |>
   mutate(agency_name = replace(agency_name, agency_name == "Office Of Collective Bargainin", "Office Of Collective Bargaining")) |>
@@ -168,11 +164,10 @@ cleaned <- ALL_DATA |>
   filter(!is.na(last_name))
 
 
-
 rm(ALL_DATA)
 ```
 
-The commission  will use the NYC Payroll data with the specified data dictionary found [here](https://data.cityofnewyork.us/City-Government/Citywide-Payroll-Data-Fiscal-Year-/k397-673e). The Commission has annualized the base pay rate reported in the city data. This analysis, at times, will also rely on the gross annual pay as recommended in the notes attached to the data dictionary. 
+The Commission  will use the NYC Payroll data with the specified data dictionary found [here](https://data.cityofnewyork.us/City-Government/Citywide-Payroll-Data-Fiscal-Year-/k397-673e). The Commission has annualized the base pay rate reported in the city data. This analysis, at times, will also rely on the gross annual pay as recommended in the notes attached to the data dictionary. 
 
 The Commission has cleaned the data to the best of its ability. The Commission also defined an aggregated agency name. This is used for analysis where we need to analyze an agency as a whole and not any reported sub divisions of an agency. The Department of Education notably has many sub divisions. 
 
@@ -180,54 +175,54 @@ The Commission has also corrected data for Custodial Engineers within the city. 
 
 The Commission  has removed records from the analysis where the gross annual pay is less than zero or there is no last name recorded in the data set. The Commission believes that these records require further information to properly address. However, this information is not currently available. 
 
-It is also assumed that negative overtime hours are a data entry issue and should be positive values. 
+It is also assumed that negative overtime hours are a data entry issue and that these should be positive values. 
 
 
 ## Which job title has the highest base rate of pay?
-The commission has been asked which role within New York City has the highest base rate of pay. We will be using the annualized base rate of pay and not the gross annual pay for this analysis. 
+The Commission has been asked which role within New York City has the highest base rate of pay. We will be using the annualized base rate of pay and not the gross annual pay for this analysis. 
 
 
 ```{r}
 #| label: q1
 #| output: true
-tmp <- cleaned |>
+q1_data <- cleaned |>
   group_by(title_description) |>
   summarize(avg_base = mean(base_annual_pay)) |>
   slice_max(order_by = avg_base, n = 1)
 
-kable(tmp |>
+kable(q1_data |>
   rename(
     "Title / Job Description" = title_description,
     "Average Base Annual Pay (USD)" = avg_base
   ), digits = 0, format.args = list(big.mark = ","))
 ```
 
-The job title with the highest average annual base pay is `{r} tmp$title_description` at `{r} dollar(tmp$avg_base)` per year.
+The job title with the highest average annual base pay is `{r} q1_data$title_description` at `{r} dollar(q1_data$avg_base)` per year.
 
 
 ## What individual and in what year had the highest total pay? 
 
-The commission has decided to review this using the total gross pay as calculated by the methodology within the data dictionary provided by the city and not the annualized base rate of pay. 
+The Commission has decided to review this using the total gross pay as calculated by the methodology within the data dictionary provided by the city and not the annualized base rate of pay. 
 
 
 ```{r}
 #| label: q2
 #| output: true
-tmp <- cleaned |>
+q2_data <- cleaned |>
   select(fiscal_year, agency_name, title_description, last_name, first_name, mid_init, gross_annual_pay) |>
   ungroup() |>
   slice_max(gross_annual_pay, n = 1)
 ```
 
-`{r} paste(tmp$first_name, if(!is.na(tmp$mid_init)){paste(tmp$mid_init,".", sep="")}else{} ,tmp$last_name,sep=" ")`, the `{r} tmp$title_description` of the `{r} tmp$agency_name` had the highest total pay of `{r} dollar(tmp$gross_annual_pay)` in `{r} tmp$fiscal_year`. 
+`{r} paste(q2_data$first_name, if(!is.na(q2_data$mid_init)){c(q2_data$mid_init,".", sep="")}else{} ,q2_data$last_name,sep=" ")`, the `{r} q2_data$title_description` of the `{r} q2_data$agency_name` had the highest total pay of `{r} dollar(q2_data$gross_annual_pay)` in `{r} q2_data$fiscal_year`. 
 
 ## Which individual had worked the most overtime hours?
 
 ### Highest Logged Amount of Overtime Hours Annually
 
 The Commission has found that the below employees have logged the largest amount of overtime hours per year. The Police Department notably is featured several times on this list. 
-
-In this instance, our analysis is hurt but the lack of unique employee identifiers. It is not immediately apparent why. 
+ 
+This analysis is weakened by the lack of a unique employee identifier within the data. We have found many cases where common names are repeated throughout the employee payroll data.  Specifically, the abbreviation "MD" for Muhammad and the surname Islam. Muhammad is one of the world's most popular names and it appears often in the payroll data, specifically with the surname Islam.  We are unable to uniquely identify the individuals  and can only drill down to the name level.
 
 ```{r}
 #| label: q3_part_1
@@ -295,14 +290,14 @@ cleaned |>
   kable(digits = 2, format.args = list(big.mark = ","))
 ```
 
-The Office of Collective Bargaining[^1] has the highest average gross salary of any agency within New York City. This conclusion is sound as its stated mission[^3] is to help the City negotiate collective bargaining with unions and the department will need a high number of attorneys on payroll to do so. 
+The Office of Collective Bargaining has the highest average gross salary of any agency within New York City. This conclusion is sound as its stated mission[^1] is to help the City negotiate collective bargaining with unions and the department will need a high number of attorneys on payroll to do so. 
 
 ## Which agency has the most employees on payroll each year?
 
 ```{r}
 #| label: q5
 #| output: true
-tmp <- cleaned |>
+q5 <- cleaned |>
   group_by(fiscal_year, aggregated_agency_name) |>
   summarize(count_employee = n()) |>
   ungroup() |>
@@ -313,12 +308,12 @@ tmp <- cleaned |>
     "Agency Name (Aggregated)" = aggregated_agency_name,
     "Fiscal Year" = fiscal_year
   )
-tmp$`Number of Employees on File` <- format(tmp$`Number of Employees on File`, big.mark = ",")
+q5$`Number of Employees on File` <- format(q5$`Number of Employees on File`, big.mark = ",")
 
-kable(tmp)
+kable(q5)
 ```
 
-The Department of Education has the most employees of any department[^1] within New York City for all years with publicly available data. 
+The Department of Education has the most employees of any department within New York City for all years with publicly available data. 
 
 ## Which agency has the highest average overtime usage?
 ```{r}
@@ -343,7 +338,7 @@ This was determined by taking the average amount of overtime hours logged by age
 
 ## What is the average salary of employees outside of the five bouroughs?
 
-The average salary of employees outside of the five boroughs is listed below. The commission is limited as the there is a catch all category called "Other". Further granularity is needed for future analysis. We leave out any employee where the work location  was recorded as `{r} NA`. 
+The average salary of employees outside of the five boroughs is listed below. The Commission is limited as the there is a catch all category called "Other". Further granularity is needed for future analysis. We leave out any employee data where the work location was recorded as `{r} NA`. 
 
 ```{r}
 #| label: q7
@@ -396,7 +391,7 @@ pay_diff <- pay_2024 - pay_2014
 Over the last ten years, the total base annual payroll of New York City has increased by `{r} dollar(pay_diff$total_payroll)`, from `{r} dollar(pay_2014$total_payroll)`in 2014 to `{r} dollar(pay_2024$total_payroll)` in 2024. 
 
 # Proposals to reduce expenditure 
-Before proceeding we must establish our base value. We will use the total recorded payroll for 2023 as this is the last full year recorded in the data set. The last update to the dataset was in October 2023. As such,overtime pay and other pay may not be accurate for Fiscal Year 2024 as of writing.  
+Before proceeding we must establish our base value. We will use the total recorded payroll for 2023 as this is the last full year recorded in the data set. The last update to the data set was in October 2023. As such,overtime pay and other pay may not be accurate for Fiscal Year 2024 as of writing.  
 
 ```{r}
 #| label: calc_high_water_mark
@@ -442,7 +437,7 @@ eric_adams_data |>
 Eric Adams was elected as mayor in the 2021 election. It is important to note that his pay for 2022 records his (now) current pay as well as the pay for his previous role as the Brooklyn Borough President. We do see a marked increase in his annual gross pay from 2015 to 2024.
 
 
-As defined in the New York City Charter[^5], the mayor is entitled to a salary of $258,750 per year. We will use this value as the maximum gross annual pay for all employees. 
+As defined in the New York City Charter[^2], the mayor is entitled to a salary of $258,750 per year. We will use this value as the maximum gross annual pay for all employees. 
 
 
 ```{r}
@@ -513,12 +508,12 @@ When restricting our view to annually salaried employees, we can see the limits 
 
 ## Proposal 2: Increase regular capacity by hiring more employees to reduce overtime expenditure
 
-We will use a 2000 hour threshold for hiring one more employee, an eight hour work day for 250 business days. Again we will be using 2023 as our benchmark.  We will be using the annualized base pay and the total overtime paid for this analysis and not the total gross pay. 
+We will use a 2000 hour threshold for hiring one more employee, an eight hour work day for 250 business days with 2023 as our benchmark.  We will be using the annualized base pay and the total overtime paid for this analysis and not the total gross pay. 
 
 ```{r}
 #| label: proposal_2
 #| output: true
-tmp <- cleaned |>
+p2 <- cleaned |>
   filter(fiscal_year==2023) |>
   group_by(agency_name, title_description) |>
   summarize(
@@ -538,10 +533,10 @@ tmp <- cleaned |>
       TRUE ~ 0
     ))
 
-total_savings <- sum(tmp$total_savings, na.rm=TRUE)
+total_savings <- sum(p2$total_savings, na.rm=TRUE)
 
 
-tmp |>
+p2 |>
   group_by(agency_name,title_description,total_ot_hours) |>
   summarise(
             total_savings = sum(new_employee_savings,na.rm=TRUE),
@@ -560,31 +555,28 @@ tmp |>
 
 ```
 
-The Commission finds that `{r} dollar(total_savings)` can be saved by hiring new employees to reduce overtime expenditure. The top ten departments that benefit from this action are in the above table. 
-
-The above table shows the savings and overtime hours worked for each job and agency. We can see firefighters, sanitation workers, police officiers, and correctional officers are all at the top of the list for agencies that can save money by implementing this strategy. 
+The Commission finds that `{r} dollar(total_savings)` can be saved by hiring new employees to reduce overtime expenditure. The above table shows the savings and overtime hours worked for each job and agency. We can see firefighters, sanitation workers, police officers, and correctional officers are all at the top of the list for agencies that can save money by implementing this strategy. 
 
 
-## Proposal 3: Remove overtime pay and increase salaries by the median or average overtime paid
+## Proposal 3: Remove overtime pay and increase salaries by the median overtime paid
 
-Overtime expenditure is a significant portion of the overall payroll for New York City. We will review the financial impact of eliminating overtime all together and replacing it with a one time pay raise. This one time raise will be equal to the median overtime or the average overtime paid per agency and description. 
+Overtime expenditure is a significant portion of the overall payroll for New York City. We will review the financial impact of eliminating overtime all together and replacing it with a one time pay raise. This one time raise will be equal to the median overtime paid per agency and job description. 
 
 The annualized base pay and the total overtime paid will be used as the base rate instead of the gross rate. This will simplify our analysis, but we lose a degree of accuracy by not including the total other pay for each employee.  
 
-We will attempt to back-date this analysis by calculating the median overtime paid per agency, job title, and fiscal year. We will then add the median the annualized base pay to create the proposed pay rate. The amount of savings is calculated subtracting the proposed pay rate from the sum of the annualized base pay and the total over paid.
+We will attempt to back-date this analysis by calculating the median overtime paid per agency, job title, and fiscal year. We will then take the multiple of the median overtime and the number of employees at the agency with this job title. This product is added to the annualized base pay to create the proposed pay rate in terms of total payroll. The amount of savings is calculated subtracting the proposed payroll total from the sum of the annualized base payroll and the total over paid.
 
-The commission will first present the results for 2023 and then compare the results against the annual payroll per year to see the total savings had this methodology been adopted in the past. 
+The Commission will first present the results for 2023 and then compare the results against the annual payroll per year to see the total savings had this methodology been adopted in the past. 
 
 
 
 ```{r}
 #| output: true
 #| label: proposal_3
-tmp <- cleaned |>
+proposal_3_data <- cleaned |>
   filter(fiscal_year==2023) |>
   group_by(fiscal_year, agency_name, title_description) |>
   summarize(
-    average_base_annual_pay = mean(base_annual_pay, ),
     total_base_annual_pay = sum(base_annual_pay),
     total_over_time_paid = sum(total_ot_paid),
     median_over_time_paid = median(total_ot_paid),
@@ -599,11 +591,12 @@ tmp <- cleaned |>
   )
 
 
-total_savings_median_pay_raise_2023 <- sum(tmp$savings, na.rm=TRUE)
+total_savings_median_pay_raise_2023 <- sum(proposal_3_data$savings, na.rm=TRUE)
 
-tmp <- tmp |>
+proposal_3_data <- proposal_3_data |>
   group_by(fiscal_year,agency_name) |>
-  summarize(agency_savings = sum(savings, na.rm=TRUE)) |> 
+  summarize(agency_savings = sum(savings, na.rm=TRUE)
+            ) |> 
   ungroup() |>
   slice_max(agency_savings, n=10) |>
      rename(
@@ -611,22 +604,22 @@ tmp <- tmp |>
        "Agency Name"=agency_name,
         "Total Savings (USD)"=agency_savings) 
 
-tmp$`Total Savings (USD)` <- format(tmp$`Total Savings (USD)`, big.mark = ",")
+proposal_3_data$`Total Savings (USD)` <- format(proposal_3_data$`Total Savings (USD)`, big.mark = ",")
 
-kable(tmp) 
+kable(proposal_3_data) 
 ```
-In total for 2023, `{r} dollar(total_savings_median_pay_raise_2023)` are saved. The top ten agencies 
+In total for 2023, `{r} dollar(total_savings_median_pay_raise_2023)` is saved using this methodology. The Police Department would save $101,588,991 alone had it used this methodology in 2023. However, the Commission must point out that this may be controversial to propose and that significant push back would be received should this be formally proposed. This option should only be used when the city is facing extreme economic hardships[^3]. 
 
+Should such a need arise, we can see in the below table that the savings are significant each year if we back date this methodology with a minimum saved of \$188,159,454 saved in 2015 and a maximum saved of \$612,766,377 in 2024. 
 
-We can see in the below table that the savings are significant each year, with a minimum saved of $188,159,454 saved in 2015 and a maximum saved of $612,766,377 in 2024. 
 
 ```{r}
+#| output: true
 #| label: proposal_3_part_2
 
-tmp <- cleaned |>
+proposal_3_data_part_2 <- cleaned |>
   group_by(fiscal_year, agency_name, title_description) |>
   summarize(
-    average_base_annual_pay = mean(base_annual_pay,na.rm = TRUE ),
     total_base_annual_pay = sum(base_annual_pay,na.rm = TRUE),
     total_over_time_paid = sum(total_ot_paid,na.rm = TRUE),
     median_over_time_paid = median(total_ot_paid,na.rm = TRUE),
@@ -646,24 +639,23 @@ tmp <- cleaned |>
     "Fiscal Year" = fiscal_year)
 
   
-tmp$`Total Annual Payroll Savings (USD)` <- format(tmp$`Total Annual Payroll Savings (USD)`, big.mark = ",") 
+proposal_3_data_part_2$`Total Annual Payroll Savings (USD)` <- format(proposal_3_data_part_2$`Total Annual Payroll Savings (USD)`, big.mark = ",") 
 
-kable(tmp)
+kable(proposal_3_data_part_2)
 ```
 
 
 
-[^1]: The Commission has determined it was best to analyze this using the highest level departmental data. This was created using the _published_ department from payroll data and labeling it with the highest level department information that could be reasonably assigned. Lower level agency data has been retained and is used as a key to help identify unique employees within an agency in the absence of unique employee identifiers. 
 
+[^1]: https://www.ocb-nyc.org/about/
 
-[^3]: https://www.ocb-nyc.org/about/
+[^2]: https://codelibrary.amlegal.com/codes/newyorkcity/latest/NYCcharter/0-0-0-9
 
-
-
-[^5]: https://codelibrary.amlegal.com/codes/newyorkcity/latest/NYCcharter/0-0-0-9
+[^3]:https://www.newyorker.com/news/news-desk/the-night-new-york-saved-itself-from-bankruptcy
 
 
 ```{r}
+#| echo: false
 #| output: true
 time_vec <- c("Last Updated:", format(Sys.time(), "%Y-%m-%d at %H:%M%p"))
 cat(paste(time_vec, " "))
