@@ -103,5 +103,40 @@
     "title": "A Review of the New York City Payroll with Reccomendations for Improvement from the Commission to Analyze Taxpayer Spending (Mini Project 1)",
     "section": "Proposal 3: Remove overtime pay and increase salaries by the median overtime paid",
     "text": "Proposal 3: Remove overtime pay and increase salaries by the median overtime paid\nOvertime expenditure is a significant portion of the overall payroll for New York City. We will review the financial impact of eliminating overtime all together and replacing it with a one time pay raise. This one time raise will be equal to the median overtime paid per agency and job description.\nThe annualized base pay and the total overtime paid will be used as the base rate instead of the gross rate. This will simplify our analysis, but we lose a degree of accuracy by not including the total other pay for each employee.\nWe will attempt to back-date this analysis by calculating the median overtime paid per agency, job title, and fiscal year. We will then take the multiple of the median overtime and the number of employees at the agency with this job title. This product is added to the annualized base pay to create the proposed pay rate in terms of total payroll. The amount of savings is calculated subtracting the proposed payroll total from the sum of the annualized base payroll and the total over paid.\nThe Commission will first present the results for 2023 and then compare the results against the annual payroll per year to see the total savings had this methodology been adopted in the past.\n\n\nCode\nproposal_3_data &lt;- cleaned |&gt;\n  filter(fiscal_year == 2023) |&gt;\n  group_by(fiscal_year, agency_name, title_description) |&gt;\n  summarize(\n    total_base_annual_pay = sum(base_annual_pay),\n    total_over_time_paid = sum(total_ot_paid),\n    median_over_time_paid = median(total_ot_paid),\n    total_ot_hours = sum(ot_hours),\n    number_employees = n(),\n    proposed_total_salary_increase = number_employees * median_over_time_paid\n  ) |&gt;\n  mutate(\n    current_pay_total = total_base_annual_pay + total_over_time_paid,\n    proposed_pay_total = total_base_annual_pay + proposed_total_salary_increase,\n    savings = current_pay_total - proposed_pay_total\n  )\n\n\ntotal_savings_median_pay_raise_2023 &lt;- sum(proposal_3_data$savings, na.rm = TRUE)\n\nproposal_3_data &lt;- proposal_3_data |&gt;\n  group_by(fiscal_year, agency_name) |&gt;\n  summarize(agency_savings = sum(savings, na.rm = TRUE)) |&gt;\n  ungroup() |&gt;\n  slice_max(agency_savings, n = 10) |&gt;\n  rename(\n    \"Fiscal Year\" = fiscal_year,\n    \"Agency Name\" = agency_name,\n    \"Total Savings (USD)\" = agency_savings\n  )\n\nproposal_3_data$`Total Savings (USD)` &lt;- format(proposal_3_data$`Total Savings (USD)`, big.mark = \",\")\n\nkable(proposal_3_data)\n\n\n\n\n\nFiscal Year\nAgency Name\nTotal Savings (USD)\n\n\n\n\n2023\nPolice Department\n101,588,991\n\n\n2023\nHra/Dept Of Social Services\n82,967,212\n\n\n2023\nAdmin For Children’s Svcs\n38,630,245\n\n\n2023\nDepartment Of Correction\n34,806,358\n\n\n2023\nFire Department\n33,940,721\n\n\n2023\nDepartment Of Education Admin\n21,539,934\n\n\n2023\nDepartment Of Sanitation\n21,285,442\n\n\n2023\nDept Of Health/Mental Hygiene\n17,092,481\n\n\n2023\nDept Of Parks & Recreation\n17,035,991\n\n\n2023\nDept Of Environment Protection\n16,796,685\n\n\n\n\n\nIn total for 2023, $463,479,875 is saved using this methodology. The Police Department would save $101,588,991 alone had it used this methodology in 2023. However, the Commission must point out that this may be controversial to propose and that significant push back would be received should this be formally proposed. This option should only be used when the city is facing extreme economic hardships3.\nShould such a need arise, we can see in the below table that the savings are significant each year if we back date this methodology with a minimum saved of $188,159,454 saved in 2015 and a maximum saved of $612,766,377 in 2024.\n\n\nCode\nproposal_3_data_part_2 &lt;- cleaned |&gt;\n  group_by(fiscal_year, agency_name, title_description) |&gt;\n  summarize(\n    total_base_annual_pay = sum(base_annual_pay, na.rm = TRUE),\n    total_over_time_paid = sum(total_ot_paid, na.rm = TRUE),\n    median_over_time_paid = median(total_ot_paid, na.rm = TRUE),\n    total_ot_hours = sum(ot_hours), na.rm = TRUE,\n    number_employees = n(),\n    proposed_total_salary_increase = number_employees * median_over_time_paid\n  ) |&gt;\n  mutate(\n    current_pay_total = total_base_annual_pay + total_over_time_paid,\n    proposed_pay_total = total_base_annual_pay + proposed_total_salary_increase,\n    savings = current_pay_total - proposed_pay_total\n  ) |&gt;\n  group_by(fiscal_year) |&gt;\n  summarize(savings = sum(savings, na.rm = TRUE)) |&gt;\n  rename(\n    \"Total Annual Payroll Savings (USD)\" = savings,\n    \"Fiscal Year\" = fiscal_year\n  )\n\n\nproposal_3_data_part_2$`Total Annual Payroll Savings (USD)` &lt;- format(proposal_3_data_part_2$`Total Annual Payroll Savings (USD)`, big.mark = \",\")\n\nkable(proposal_3_data_part_2)\n\n\n\n\n\nFiscal Year\nTotal Annual Payroll Savings (USD)\n\n\n\n\n2014\n216,208,052\n\n\n2015\n201,951,852\n\n\n2016\n304,165,755\n\n\n2017\n356,290,876\n\n\n2018\n370,087,075\n\n\n2019\n360,814,740\n\n\n2020\n340,168,867\n\n\n2021\n370,021,279\n\n\n2022\n483,963,190\n\n\n2023\n496,619,548\n\n\n2024\n654,769,640\n\n\n\n\n\n\n\nLast Updated:   2025-03-05 at 20:54PM"
+  },
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "Craig Allen",
+    "section": "",
+    "text": "Zicklin School of Business - Baruch College, New York, NY\nM.S. in Statistics, 2024 - Current\nSyracuse University, Syracuse, NY\nB.S. in Mathematics, 2011 - 2015"
+  },
+  {
+    "objectID": "about.html#education",
+    "href": "about.html#education",
+    "title": "Craig Allen",
+    "section": "",
+    "text": "Zicklin School of Business - Baruch College, New York, NY\nM.S. in Statistics, 2024 - Current\nSyracuse University, Syracuse, NY\nB.S. in Mathematics, 2011 - 2015"
+  },
+  {
+    "objectID": "about.html#experience",
+    "href": "about.html#experience",
+    "title": "Craig Allen",
+    "section": "Experience",
+    "text": "Experience\n\nCitigroup\nFD Technologies\nQuantitative Brokers\nDeutsche Bank"
+  },
+  {
+    "objectID": "about.html#trivia",
+    "href": "about.html#trivia",
+    "title": "Craig Allen",
+    "section": "Trivia",
+    "text": "Trivia\n\nBooks I’d Reccomend\n\nThe Unaccountability Machine by Dan Davies\n\nThere is No Antimemetics Division by qntm\n\nThis Is How You Lose the Time War by Amal El-Mohtar and Max Gladstone\n\nShogun by James Clavell\n\n\n\nCurrently Reading\nChevengur by Andrey Platonov\n\n\nLikes\n\nCult and B movies\nMeditation\nReading\nTrying to keep bonsai trees alive\nWhen my code works\nCollecting vinyl records\n\n\n\nDislikes\n\nWhen my code doesn’t work\nMoving my vinyl records"
+  },
+  {
+    "objectID": "about.html#song-of-the-week",
+    "href": "about.html#song-of-the-week",
+    "title": "Craig Allen",
+    "section": "Song of the Week",
+    "text": "Song of the Week\n\n\n\nLast Updated:   2025-03-08 at 08:34AM"
   }
 ]
