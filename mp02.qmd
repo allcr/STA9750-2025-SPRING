@@ -346,10 +346,10 @@ NTD_SERVICE |>
   group_by(Agency) |>
   summarize(total_UPT = sum(UPT)) |>
   slice_max(total_UPT, n = 1) |>
-  rename(`Total Unlinked Passenger Trips`=total_UPT) |>
+  rename(`Total Unlinked Passenger Trips` = total_UPT) |>
   gt() |>
   fmt_number(columns = `Total Unlinked Passenger Trips`, decimal = 0) |>
-  tab_header(title='Transit Agency with the Highest Annual Number of Total Unlinked Passenger Trips')
+  tab_header(title = "Transit Agency with the Highest Annual Number of Total Unlinked Passenger Trips")
 ```
 The MTA of [New York City](https://www.youtube.com/watch?v=872_7q9tqxw) has the largest annual amount of Total Unlinked Passenger trips at well over 2.6 billion trips. 
 
@@ -365,7 +365,7 @@ NTD_SERVICE |>
   # TODO filter out non MTA
   mutate(trip_length = MILES / UPT) |>
   summarize(avg_trip_length = mean(trip_length)) |>
-  rename(`Average Trip Length`=avg_trip_length) |>
+  rename(`Average Trip Length` = avg_trip_length) |>
   gt()
 ```
 We can see that the average trip length in [New York City](https://www.youtube.com/watch?v=k8OjaLP-LMw) is about 8.25 miles. 
@@ -382,8 +382,8 @@ NTD_SERVICE |>
   mutate(trip_length = MILES / UPT) |>
   # miles per trip
   slice_max(trip_length, n = 1) |>
-  select(-c(City,State,MILES,UPT,`NTD ID`)) |>
-  rename(`Trip Length`=trip_length) |>
+  select(-c(City, State, MILES, UPT, `NTD ID`)) |>
+  rename(`Trip Length` = trip_length) |>
   gt() |>
   tab_header(title = "Agency with Longest Average Trip Length")
 ```
@@ -399,9 +399,9 @@ NTD_SERVICE |>
   group_by(State) |>
   summarize(tot_miles = sum(MILES)) |>
   slice_min(tot_miles, n = 1) |>
-  rename(`Total Miles Travveled by Public Transit`=tot_miles) |>
+  rename(`Total Miles Travveled by Public Transit` = tot_miles) |>
   gt() |>
-  fmt_number(`Total Miles Travveled by Public Transit`,decimal=0)
+  fmt_number(`Total Miles Travveled by Public Transit`, decimal = 0)
 ```
 
 New Hampshite has the fewest total number of miles travelled at ~3.75 million miles.
@@ -414,7 +414,7 @@ New Hampshite has the fewest total number of miles travelled at ~3.75 million mi
 
 setdiff(data.frame(State = state.abb), data.frame(State = NTD_SERVICE$State)) |>
   gt() |>
-  tab_header(title="States Not Included in the Transit Dataset")
+  tab_header(title = "States Not Included in the Transit Dataset")
 ```
 
 19 States are not included in the NTD Service Data: Arizona, Arkansas, California, Colorado, Hawaii, Iowa, Kansas, Louisianna, Missouri, Montana , Nebraska. Nevada, New Mexico, North Dakota, Oklahoma, South Dakota, Utah, Texas, and Wyoming. 
@@ -433,7 +433,7 @@ consolidated <- NTD_SERVICE |>
   mutate(
     total_emissions = `Bio-Diesel` * 20.9 + `Bunker Fuel` * 25.5 + `C Natural Gas` * 120.85 + `Diesel Fuel` * 22.45 + `Electric Battery` * CO2_MWh / 1000 + `Electric Propulsion` * CO2_MWh / 1000 + `Kerosene` * 20.6 + Ethanol * 12.6 + Methonal * 9.1 + Gasoline * 20.86 + Hydrogen * CO2_MWh / 1000 + `Liquified Nat Gas` * 120.85 + `Liquified Petroleum Gas` * 12.68,
     clean_energy = case_when(
-      primary_source %in% c("Hydroelectric", "Nuclear", "Wind") ~ `Electric Battery`  / 1000 + `Electric Propulsion` / 1000 ,
+      primary_source %in% c("Hydroelectric", "Nuclear", "Wind") ~ `Electric Battery` / 1000 + `Electric Propulsion` / 1000,
       TRUE ~ 0
     )
   ) |>
@@ -475,8 +475,8 @@ The Green Transit Alliance for Investigation of Variance looked at the total amo
 results |>
   filter(size == "Large") |>
   slice_min(tot_em_per_upt, n = 1) |>
-  select(Agency,tot_em_per_upt) |>
-  rename(`Total Emissions Per UPT`=tot_em_per_upt)|>
+  select(Agency, tot_em_per_upt) |>
+  rename(`Total Emissions Per UPT` = tot_em_per_upt) |>
   gt()
 ```
 
@@ -498,8 +498,8 @@ results |>
     x[c(TRUE, FALSE)]
   }, labels = abbreviate, name = "Agency Name (Abbreviated)") +
   theme(axis.text.x = element_text(angle = -45, hjust = 0)) +
-  gghighlight(tot_em_per_upt < 0.473) + 
-  labs(title="Emissions per UPT for Agencies in Scope")
+  gghighlight(tot_em_per_upt < 0.473) +
+  labs(title = "Emissions per UPT for Agencies in Scope")
 ```
 
 We can see on the chart that TriMet of Oregon (highlighted) has significantly fewer emissions per UPT than the other large agencies. Names have been removed or abbreviated to save space. 
@@ -511,10 +511,9 @@ We can see on the chart that TriMet of Oregon (highlighted) has significantly fe
 results |>
   filter(size == "Medium") |>
   slice_min(tot_em_per_upt, n = 1) |>
-  select(Agency,tot_em_per_upt)|>
-  rename(`Total Emissions Per UPT`=tot_em_per_upt)|>
+  select(Agency, tot_em_per_upt) |>
+  rename(`Total Emissions Per UPT` = tot_em_per_upt) |>
   gt()
-
 ```
 
 The Seattle Monorail is the greenest in the Medium size-class of agencies. 
@@ -526,9 +525,9 @@ The Seattle Monorail is the greenest in the Medium size-class of agencies.
 
 results |>
   filter(size == "Small") |>
-  slice_min(tot_em_per_upt, n = 1)|>
-  select(Agency,tot_em_per_upt)|>
-  rename(`Total Emissions Per UPT`=tot_em_per_upt)|>
+  slice_min(tot_em_per_upt, n = 1) |>
+  select(Agency, tot_em_per_upt) |>
+  rename(`Total Emissions Per UPT` = tot_em_per_upt) |>
   gt()
 ```
 
@@ -546,10 +545,10 @@ results |>
     avoided_emissions = car_equivalent_em - tot_em
   ) |>
   slice_max(avoided_emissions, n = 10) |>
-  select(Agency, avoided_emissions)|> 
-  rename(`Total Avoided Pounds of Emissions`=avoided_emissions)|>
-  gt()|> 
-  fmt_number(`Total Avoided Pounds of Emissions`,decimal=0)
+  select(Agency, avoided_emissions) |>
+  rename(`Total Avoided Pounds of Emissions` = avoided_emissions) |>
+  gt() |>
+  fmt_number(`Total Avoided Pounds of Emissions`, decimal = 0)
 ```
 The MTA of [New York City](https://www.youtube.com/watch?v=Azk_f9rl-iQ) avoided the most emissions: over 9 billion pounds of CO2. Avoided emissions were calculated by taking the number of miles travelled on the service and using the equivalent emissions if those miles were driven by a gasoline powered car.  
 
@@ -559,12 +558,12 @@ The MTA of [New York City](https://www.youtube.com/watch?v=Azk_f9rl-iQ) avoided 
 #| label: task_7_determine_winners_award_3
 
 results |>
-  slice_max(total_clean_energy, n = 1) |> 
-  select(Agency,total_clean_energy) |>
-  rename(`kWh of Clean Energy Used for Electric Vehicles`=total_clean_energy) |>
+  slice_max(total_clean_energy, n = 1) |>
+  select(Agency, total_clean_energy) |>
+  rename(`kWh of Clean Energy Used for Electric Vehicles` = total_clean_energy) |>
   gt() |>
-  fmt_number(`kWh of Clean Energy Used for Electric Vehicles`,decimal=0) |> 
-  tab_header(title="Agency with the Most Clean Energy Used to Power Electric Vehicles")
+  fmt_number(`kWh of Clean Energy Used for Electric Vehicles`, decimal = 0) |>
+  tab_header(title = "Agency with the Most Clean Energy Used to Power Electric Vehicles")
 ```
 For this award, we look at the transit agencies with respect to the primary power source in their state. If the primary power source is nuclear, wind, or hydroelectric, we take the amount of kWh used for electric vehicles. The agency that has the highest amount of electric vehicle usage with a clean energy source is the Chicago Transit Authority with 340 Wh of clean energy used. 
 
@@ -588,9 +587,9 @@ results |>
   scale_x_discrete(breaks = function(x) {
     x[c(TRUE, FALSE)]
   }, labels = abbreviate, name = "Agency Name (Abbreviated)") +
-  theme(axis.text.x = element_text(angle = -45, hjust = 0)) + 
-  gghighlight(total_clean_energy > 300000) + 
-  labs(title="Electricity Used in  Transit Agency Electric Vehicles within States with Primary Clean Energy Sources")
+  theme(axis.text.x = element_text(angle = -45, hjust = 0)) +
+  gghighlight(total_clean_energy > 300000) +
+  labs(title = "Electricity Used in  Transit Agency Electric Vehicles within States with Primary Clean Energy Sources")
 ```
 Names are abbreviated or removed to save space. 
 
@@ -602,12 +601,10 @@ Names are abbreviated or removed to save space.
 results |>
   filter(size == "Small") |>
   slice_max(tot_em_per_mile, n = 1) |>
-  select(Agency,tot_em_per_mile) |>
-  rename(`Total Emissions Per Mile`=tot_em_per_mile) |>
+  select(Agency, tot_em_per_mile) |>
+  rename(`Total Emissions Per Mile` = tot_em_per_mile) |>
   gt()
-  
 ```
 The Altoona Metro Transit gets our Better Luck Next Time award for being the heaviest emitter per mile with 13 pounds of CO2 emitted per mile. 
 
 [^1]: Not to be confused with the similarly named Green Transit Alliance for Variance or the Green Transit Alliance for Variance of Investigations.
-
