@@ -2,11 +2,11 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://allcr.github.io/STA9750-2025-SPRING/about.html</loc>
-    <lastmod>2025-03-08T13:34:56.436Z</lastmod>
+    <lastmod>2025-03-27T00:44:20.148Z</lastmod>
   </url>
   <url>
     <loc>https://allcr.github.io/STA9750-2025-SPRING/index.html</loc>
-    <lastmod>2025-03-04T01:43:28.414Z</lastmod>
+    <lastmod>2025-03-26T22:11:42.445Z</lastmod>
   </url>
   <url>
     <loc>https://allcr.github.io/STA9750-2025-SPRING/posts/mini_project_4.html</loc>
@@ -23,5 +23,9 @@
   <url>
     <loc>https://allcr.github.io/STA9750-2025-SPRING/posts/mp01.html</loc>
     <lastmod>2025-03-04T01:32:55.000Z</lastmod>
+  </url>
+  <url>
+    <loc>https://allcr.github.io/STA9750-2025-SPRING/mp02.html</loc>
+    <lastmod>2025-03-27T00:43:02.505Z</lastmod>
   </url>
 </urlset>

@@ -23,3 +23,6 @@ format:
 
 editor:
   mode: source
+  
+execute:
+  freeze: true

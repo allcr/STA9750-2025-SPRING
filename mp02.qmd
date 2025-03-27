@@ -1,11 +1,616 @@
 ---
-title: "mini_project_2"
+title: "Green Transit Alliance for Investigation of Variance Annual Awards (Mini Project 2)"
 format: 
   html: 
     code-fold: true
+engine: knitr
 execute:
-  echo: false
+  echo: true
   output: false
-draft: True
+draft: false
 ---
+
+# Awards 
+
+The Green Transit Alliance for Investigation of Variance[^1] is pleased to announce the winners of the coveted Victory over Internal Combustion Engines in the City (Vice City) awards. The awards were presented during a live ceremony at the San Fierro City Hall in San Andreas, California on March 22nd.
+
+Without further ado, GTA IV is pleased to announce the illustrious winners of the 2025 Vice City Awards. 
+
+## Winners 
+🏆 Greenest Transportation Agency - Large : TriMet of Oregon 
+
+🏆 Greenest Transportation Agency - Medium : Seattle Center Monorail
+
+🏆 Greenest Transportation Agency - Small : City of Fort Lauderdale
+
+🏆 Most Emissions Avoided : MTA New York City Transit
+
+🏆 Highest Electric Vehicle Usage with Clean Power Sources : Chicago Transit Authority
+
+🚫🏆🚫 Better Luck Next Time - Most Emissions Per Mile for a Small Agency : Altoona Metro Transit
+
+# Analysis 
+
+We now will provide our rationale for the awards presented. We will begin with the exploratory work conducted to better understand the energy landscape throughout the country. We will then progress into our analysis of the transit agencies. 
+
+## Exploratory Efforts
+
+```{r}
+#| label: download_eia_data
+ensure_package <- function(pkg) {
+  pkg <- as.character(substitute(pkg))
+  options(repos = c(CRAN = "https://cloud.r-project.org"))
+  if (!require(pkg, character.only = TRUE)) install.packages(pkg)
+  stopifnot(require(pkg, character.only = TRUE))
+}
+
+ensure_package(tidyverse)
+ensure_package(httr2)
+ensure_package(rvest)
+ensure_package(datasets)
+ensure_package(purrr)
+ensure_package(DT)
+ensure_package(scales)
+ensure_package(gt)
+ensure_package(ggplot2)
+ensure_package(gghighlight)
+
+get_eia_sep <- function(state, abbr) {
+  state_formatted <- str_to_lower(state) |> str_replace_all("\\s", "")
+
+  dir_name <- file.path("data", "mp02")
+  file_name <- file.path(dir_name, state_formatted)
+
+  dir.create(dir_name, showWarnings = FALSE, recursive = TRUE)
+
+  if (!file.exists(file_name)) {
+    BASE_URL <- "https://www.eia.gov"
+    REQUEST <- request(BASE_URL) |>
+      req_url_path("electricity", "state", state_formatted)
+
+    RESPONSE <- req_perform(REQUEST)
+
+    resp_check_status(RESPONSE)
+
+    writeLines(resp_body_string(RESPONSE), file_name)
+  }
+
+  TABLE <- read_html(file_name) |>
+    html_element("table") |>
+    html_table() |>
+    mutate(Item = str_to_lower(Item))
+
+  if ("U.S. rank" %in% colnames(TABLE)) {
+    TABLE <- TABLE |> rename(Rank = `U.S. rank`)
+  }
+
+  CO2_MWh <- TABLE |>
+    filter(Item == "carbon dioxide (lbs/mwh)") |>
+    pull(Value) |>
+    str_replace_all(",", "") |>
+    as.numeric()
+
+  PRIMARY <- TABLE |>
+    filter(Item == "primary energy source") |>
+    pull(Rank)
+
+  RATE <- TABLE |>
+    filter(Item == "average retail price (cents/kwh)") |>
+    pull(Value) |>
+    as.numeric()
+
+  GENERATION_MWh <- TABLE |>
+    filter(Item == "net generation (megawatthours)") |>
+    pull(Value) |>
+    str_replace_all(",", "") |>
+    as.numeric()
+
+  data.frame(
+    CO2_MWh = CO2_MWh,
+    primary_source = PRIMARY,
+    electricity_price_MWh = RATE * 10, # / 100 cents to dollars &
+    # * 1000 kWh to MWH
+    generation_MWh = GENERATION_MWh,
+    state = state,
+    abbreviation = abbr
+  )
+}
+
+EIA_SEP_REPORT <- map2(state.name, state.abb, get_eia_sep) |> list_rbind()
+```
+
+
+#### Which State has the most expensive retail electricity? 
+
+```{r}
+#| label: task_2_max_electricity_price
+#| output: true
+EIA_SEP_REPORT |>
+  slice_max(electricity_price_MWh, n = 1) |>
+  rename(
+    `Pounds of CO2 Emitted per MWh of Electricity Produced` = CO2_MWh,
+    `Primary Source of Electricity Generation` = primary_source,
+    `Average Retail Price for 1000 kWh` = electricity_price_MWh,
+    `Total Generation Capacity (MWh)` = generation_MWh,
+    State = state
+  ) |>
+  select(-c(abbreviation)) |>
+  gt() |>
+  tab_header(
+    title = "Most Expensive Retail Electricity Sources"
+  ) |>
+  fmt_currency(columns = `Average Retail Price for 1000 kWh`, decimals = 0) |>
+  fmt_number(columns = c(`Pounds of CO2 Emitted per MWh of Electricity Produced`, `Total Generation Capacity (MWh)`), decimals = 0)
+```
+Hawaii has the most expensive retail energy source at $386 per 1000 kWh. 
+
+### Which State has the dirtiest energy mix? 
+
+```{r}
+#| label: task_2_dirtiest_electricity_mix
+#| output: true
+EIA_SEP_REPORT |>
+  filter(primary_source %in% c("Natural gas", "Coal", "Petrolum")) |>
+  group_by(state) |>
+  summarize(total_co2 = sum(CO2_MWh * generation_MWh)) |>
+  slice_max(total_co2, n = 1) |>
+  rename(State = state, `Total Pounds of CO2 Emitted from Electricity Produced` = total_co2) |>
+  gt() |>
+  fmt_number(columns = `Total Pounds of CO2 Emitted from Electricity Produced`, decimal = 0) |>
+  tab_header(
+    title = "The State with the Dirtiest Mix of Energy"
+  )
+```
+Texas is the dirtiest state with 467,936,841,960 pounds of CO2 produced. This is assuming that *all* of the electricity producted in Texas is done so with it's primary source of Natural gas. 
+
+### On average, how many pounds of CO2 are emitted per MWh of electricity produced in the US?
+```{r}
+#| label: task_2_weighted_average
+avg <- weighted.mean(EIA_SEP_REPORT$CO2_MWh, w = (EIA_SEP_REPORT$generation_MWh / sum(EIA_SEP_REPORT$generation_MWh)))
+```
+
+About `{r} round(avg)` pounds of CO2 is produced per MWh of energy produced accoring to the weight average of CO2 produced per MWH and the generation capacity of each state.
+
+### What is the rarest primary source of energy in the country? 
+```{r}
+#| label: task_2_rarest_source
+#| output: true
+EIA_SEP_REPORT |>
+  group_by(primary_source) |>
+  summarize(Count = n()) |>
+  arrange(Count) |>
+  rename(`Primary Source` = primary_source) |>
+  gt() |>
+  tab_header(
+    title = "Count of Primary Energy Sources for each State"
+  )
+```
+
+Petroleum is the least common primary energy source in the United States with only a single state using it as such. 
+
+### Texas vs. New York
+```{r}
+#| label: task_2_texas_v_ny
+#| output: true
+EIA_SEP_REPORT |>
+  filter(state %in% c("New York", "Texas")) |>
+  group_by(state) |>
+  summarize(total_co2 = sum(CO2_MWh * generation_MWh)) |>
+  rename(State = state, `Total CO2 Emiited` = total_co2) |>
+  gt() |>
+  fmt_number(`Total CO2 Emiited`, decimal = 0)
+```
+We can see a striking difference in the amount of CO2 emitted between New York and Texas. Texas emitted approximately *7* times the amount of CO2 as New York does. 
+
+```{r}
+#| label: load_energy_consumption_data
+ensure_package(readxl)
+# Create 'data/mp02' directory if not already present
+DATA_DIR <- file.path("data", "mp02")
+dir.create(DATA_DIR, showWarnings = FALSE, recursive = TRUE)
+
+NTD_ENERGY_FILE <- file.path(DATA_DIR, "2023_ntd_energy.xlsx")
+NTD_ENERGY_FUEL_TYPE_EMISSIONS_FILE <- file.path(DATA_DIR, "c02_vol_mass.xlsx")
+
+
+
+if (!file.exists(NTD_ENERGY_FILE)) {
+  DS <- download.file("https://www.transit.dot.gov/sites/fta.dot.gov/files/2024-10/2023%20Energy%20Consumption.xlsx",
+    destfile = NTD_ENERGY_FILE,
+    method = "curl"
+  )
+
+  if (DS | (file.info(NTD_ENERGY_FILE)$size == 0)) {
+    cat("I was unable to download the NTD Energy File. Please try again.\n")
+    stop("Download failed")
+  }
+}
+
+if (!file.exists(NTD_ENERGY_FUEL_TYPE_EMISSIONS_FILE)) {
+  DS <- download.file("https://www.eia.gov/environment/emissions/xls/co2_vol_mass.xlsx",
+    destfile = NTD_ENERGY_FUEL_TYPE_EMISSIONS_FILE,
+    method = "curl"
+  )
+
+  if (DS | (file.info(NTD_ENERGY_FUEL_TYPE_EMISSIONS_FILE)$size == 0)) {
+    cat("I was unable to download the NTD Fuel Type Emissions File. Please try again.\n")
+    stop("Download failed")
+  }
+}
+
+
+
+
+NTD_ENERGY_RAW <- read_xlsx(NTD_ENERGY_FILE, na = c("", "-"))
+NTD_FUEL_TYPE_EMISSIONS <- read_xlsx(NTD_ENERGY_FUEL_TYPE_EMISSIONS_FILE)
+# NTD_FUEL_TYPE_EMISSIONS <- NTD_FUEL_TYPE_EMISSIONS[-c(1,3,12,15,17,24,30,36,37,38,39,40,41),][-c(3,5)]
+```
+
+```{r}
+#| label: clean_energy_consumption_data
+ensure_package(tidyr)
+to_numeric_fill_0 <- function(x) {
+  replace_na(as.numeric(x), 0)
+}
+
+NTD_ENERGY <- NTD_ENERGY_RAW |>
+  select(-c(
+    `Reporter Type`,
+    `Reporting Module`,
+    `Other Fuel`,
+    `Other Fuel Description`
+  )) |>
+  mutate(across(
+    -c(
+      `Agency Name`,
+      `Mode`,
+      `TOS`
+    ),
+    to_numeric_fill_0
+  )) |>
+  group_by(`NTD ID`, `Mode`, `Agency Name`) |>
+  summarize(across(where(is.numeric), sum),
+    .groups = "keep"
+  ) |>
+  mutate(ENERGY = sum(c_across(c(where(is.numeric))))) |>
+  filter(ENERGY > 0) |>
+  select(-ENERGY) |>
+  ungroup()
+
+rm(NTD_ENERGY_RAW)
+```
+
+```{r}
+#| label: task_3_mode_cleanup
+
+## Mode Codes sourced from NTD Glossary https://www.transit.dot.gov/ntd/national-transit-database-ntd-glossary#M
+NTD_ENERGY <- NTD_ENERGY |>
+  mutate(Mode = case_when(
+    Mode == "HR" ~ "Heavy Rail",
+    Mode == "DR" ~ "Double Decker Buses",
+    Mode == "FB" ~ "Ferry Boat",
+    Mode == "MB" ~ "Bus",
+    Mode == "AR" ~ "Alaska Railroad",
+    Mode == "CC" ~ "Cable Car",
+    Mode == "CR" ~ "Commuter Rail",
+    Mode == "YR" ~ "Hybrid Rail",
+    Mode == "IP" ~ "Inclined Plane",
+    Mode == "LR" ~ "Light Rail",
+    Mode == "MG" ~ "Monorail/Automated guideway transit",
+    Mode == "SR" ~ "Streetcar",
+    Mode == "TB" ~ "Trolleybus",
+    Mode == "CB" ~ "Commuter Bus",
+    Mode == "TR" ~ "Aerial Tramways",
+    Mode == "RB" ~ "Bus Rapid Transit",
+    Mode == "PB" ~ "Publico",
+    Mode == "VP" ~ "Van Pool",
+    TRUE ~ "Unknown"
+  ))
+```
+
+```{r}
+#| label: task_4_load_data
+NTD_SERVICE_FILE <- file.path(DATA_DIR, "2023_service.csv")
+if (!file.exists(NTD_SERVICE_FILE)) {
+  DS <- download.file("https://data.transportation.gov/resource/6y83-7vuw.csv",
+    destfile = NTD_SERVICE_FILE,
+    method = "curl"
+  )
+
+  if (DS | (file.info(NTD_SERVICE_FILE)$size == 0)) {
+    cat("I was unable to download the NTD Service File. Please try again.\n")
+    stop("Download failed")
+  }
+}
+
+NTD_SERVICE_RAW <- read_csv(NTD_SERVICE_FILE)
+NTD_SERVICE <- NTD_SERVICE_RAW |>
+  mutate(`NTD ID` = as.numeric(`_5_digit_ntd_id`)) |>
+  rename(
+    Agency = agency,
+    City = max_city,
+    State = max_state,
+    UPT = sum_unlinked_passenger_trips_upt,
+    MILES = sum_passenger_miles
+  ) |>
+  select(matches("^[A-Z]", ignore.case = FALSE)) |>
+  filter(MILES > 0)
+
+rm(NTD_SERVICE_RAW)
+```
+
+
+### 
+
+```{r}
+#| label: task_4_upt
+#| output: true
+NTD_SERVICE |>
+  group_by(Agency) |>
+  summarize(total_UPT = sum(UPT)) |>
+  slice_max(total_UPT, n = 1) |>
+  rename(`Total Unlinked Passenger Trips`=total_UPT) |>
+  gt() |>
+  fmt_number(columns = `Total Unlinked Passenger Trips`, decimal = 0) |>
+  tab_header(title='Transit Agency with the Highest Annual Number of Total Unlinked Passenger Trips')
+```
+The MTA of [New York City](https://www.youtube.com/watch?v=872_7q9tqxw) has the largest annual amount of Total Unlinked Passenger trips at well over 2.6 billion trips. 
+
+### How long is the average trip length in New York City? 
+```{r}
+#| label: task_4_average_trip_length_MTA
+NTD_SERVICE |>
+  filter(
+    State == "NY",
+    City %in% c("Staten Island", "New York", "Brooklyn")
+  ) |>
+  # miles per trip
+  # TODO filter out non MTA
+  mutate(trip_length = MILES / UPT) |>
+  summarize(avg_trip_length = mean(trip_length)) |>
+  rename(`Average Trip Length`=avg_trip_length) |>
+  gt()
+```
+We can see that the average trip length in [New York City](https://www.youtube.com/watch?v=k8OjaLP-LMw) is about 8.25 miles. 
+
+
+```{r}
+#| label: task_4_longest_trip_length
+#| output: true
+NTD_SERVICE |>
+  filter(
+    State == "NY",
+    City %in% c("Staten Island", "New York", "Brooklyn")
+  ) |>
+  mutate(trip_length = MILES / UPT) |>
+  # miles per trip
+  slice_max(trip_length, n = 1) |>
+  select(-c(City,State,MILES,UPT,`NTD ID`)) |>
+  rename(`Trip Length`=trip_length) |>
+  gt() |>
+  tab_header(title = "Agency with Longest Average Trip Length")
+```
+The service with the longest average trip length among the New York City agencies is the [Long Island](https://www.youtube.com/watch?v=nf26Q-E2YNY) Rail Road.
+
+### What state has the total fewest miles travelled by Public Transit?
+
+```{r}
+#| label: task_4_fewest_total_miles
+#| output: true
+
+NTD_SERVICE |>
+  group_by(State) |>
+  summarize(tot_miles = sum(MILES)) |>
+  slice_min(tot_miles, n = 1) |>
+  rename(`Total Miles Travveled by Public Transit`=tot_miles) |>
+  gt() |>
+  fmt_number(`Total Miles Travveled by Public Transit`,decimal=0)
+```
+
+New Hampshite has the fewest total number of miles travelled at ~3.75 million miles.
+
+### Are all the states present in the Service data? 
+
+```{r}
+#| label: task_4_all_states_y_or_n
+#| output: true
+
+setdiff(data.frame(State = state.abb), data.frame(State = NTD_SERVICE$State)) |>
+  gt() |>
+  tab_header(title="States Not Included in the Transit Dataset")
+```
+
+19 States are not included in the NTD Service Data: Arizona, Arkansas, California, Colorado, Hawaii, Iowa, Kansas, Louisianna, Missouri, Montana , Nebraska. Nevada, New Mexico, North Dakota, Oklahoma, South Dakota, Utah, Texas, and Wyoming. 
+
+We also note that Washington D.C. and Puerto Rico *are* included in the service data. 
+
+## Awards Analysis
+
+```{r}
+#| label: task_5_calculate_emissions
+state_key <- data.frame(state_abb = state.abb, state_name = state.name)
+# Additional source https://www.engineeringtoolbox.com/co2-emission-fuels-d_1085.html
+consolidated <- NTD_SERVICE |>
+  inner_join(NTD_ENERGY, by = join_by(`NTD ID` == `NTD ID`)) |>
+  left_join(EIA_SEP_REPORT, by = join_by(State == abbreviation)) |>
+  mutate(
+    total_emissions = `Bio-Diesel` * 20.9 + `Bunker Fuel` * 25.5 + `C Natural Gas` * 120.85 + `Diesel Fuel` * 22.45 + `Electric Battery` * CO2_MWh / 1000 + `Electric Propulsion` * CO2_MWh / 1000 + `Kerosene` * 20.6 + Ethanol * 12.6 + Methonal * 9.1 + Gasoline * 20.86 + Hydrogen * CO2_MWh / 1000 + `Liquified Nat Gas` * 120.85 + `Liquified Petroleum Gas` * 12.68,
+    clean_energy = case_when(
+      primary_source %in% c("Hydroelectric", "Nuclear", "Wind") ~ `Electric Battery`  / 1000 + `Electric Propulsion` / 1000 ,
+      TRUE ~ 0
+    )
+  ) |>
+  filter(!(State %in% c("PR", "DC"))) |>
+  unique()
+```
+
+```{r}
+#| label: task_6_normalize_emissions
+results <- consolidated |>
+  mutate(size = case_when(
+    UPT > quantile(UPT, .75) ~ "Large",
+    UPT > quantile(UPT, .25) ~ "Medium",
+    UPT <= quantile(UPT, .25) ~ "Small"
+  )) |>
+  group_by(Agency, UPT, MILES, State, size) |>
+  summarize(
+    tot_em = sum(total_emissions, na.rm = TRUE),
+    tot_em_per_upt = tot_em / UPT,
+    tot_em_per_mile = tot_em / MILES,
+    total_clean_energy = sum(clean_energy, na.rm = TRUE),
+  ) |>
+  ungroup() |>
+  unique()
+
+results$size <- factor(results$size, unique(results$size))
+```
+
+
+### 🏆 Greenest Transportation Agency
+
+The Green Transit Alliance for Investigation of Variance looked at the total amount of emissions per Unlinked Passenger Trip as the main metric for detmining the Greenest Transit Agency. We award this to three agencies based on the total number of Unlinked Passenger Trips serviced by the agencies. 
+
+#### Large Agency
+
+```{r}
+#| label: task_7_determine_winners_award_1_large
+#| output: true
+results |>
+  filter(size == "Large") |>
+  slice_min(tot_em_per_upt, n = 1) |>
+  select(Agency,tot_em_per_upt) |>
+  rename(`Total Emissions Per UPT`=tot_em_per_upt)|>
+  gt()
+```
+
+```{r}
+#| label: task_7_determine_winners_award_1_plot
+#| fig_cap: "TriMet of Oregon has the Smallest Total Emissions out of any of the Large Public Transit System"
+#| output: true
+results |>
+  filter(size == "Large") |>
+  arrange(tot_em_per_upt) |>
+  mutate(Agency = factor(Agency, levels = Agency)) |>
+  ggplot(aes(x = Agency, y = tot_em_per_upt)) +
+  geom_bar(stat = "identity") +
+  scale_y_continuous(
+    name = "Total Pounds of CO2 Emisssions Per UPT",
+    breaks = scales::pretty_breaks(n = 6)
+  ) +
+  scale_x_discrete(breaks = function(x) {
+    x[c(TRUE, FALSE)]
+  }, labels = abbreviate, name = "Agency Name (Abbreviated)") +
+  theme(axis.text.x = element_text(angle = -45, hjust = 0)) +
+  gghighlight(tot_em_per_upt < 0.473) + 
+  labs(title="Emissions per UPT for Agencies in Scope")
+```
+
+We can see on the chart that TriMet of Oregon (highlighted) has significantly fewer emissions per UPT than the other large agencies. Names have been removed or abbreviated to save space. 
+
+#### Medium Agency
+```{r}
+#| label: task_7_determine_winners_award_1_medium
+#| output: true
+results |>
+  filter(size == "Medium") |>
+  slice_min(tot_em_per_upt, n = 1) |>
+  select(Agency,tot_em_per_upt)|>
+  rename(`Total Emissions Per UPT`=tot_em_per_upt)|>
+  gt()
+
+```
+
+The Seattle Monorail is the greenest in the Medium size-class of agencies. 
+
+#### Small Agency
+```{r}
+#| label: task_7_determine_winners_award_1_small
+#| output: true
+
+results |>
+  filter(size == "Small") |>
+  slice_min(tot_em_per_upt, n = 1)|>
+  select(Agency,tot_em_per_upt)|>
+  rename(`Total Emissions Per UPT`=tot_em_per_upt)|>
+  gt()
+```
+
+The City of Fort Lauderdale operates the Greenest Agency in the Small Category. 
+
+### 🏆 Most Emmissions Avoided
+
+```{r}
+#| label: task_7_determine_winners_award_2
+#| output: true
+# CAFE Rate is 49 MPG
+results |>
+  mutate(
+    car_equivalent_em = 49 * MILES * 20.86,
+    avoided_emissions = car_equivalent_em - tot_em
+  ) |>
+  slice_max(avoided_emissions, n = 10) |>
+  select(Agency, avoided_emissions)|> 
+  rename(`Total Avoided Pounds of Emissions`=avoided_emissions)|>
+  gt()|> 
+  fmt_number(`Total Avoided Pounds of Emissions`,decimal=0)
+```
+The MTA of [New York City](https://www.youtube.com/watch?v=Azk_f9rl-iQ) avoided the most emissions: over 9 billion pounds of CO2. Avoided emissions were calculated by taking the number of miles travelled on the service and using the equivalent emissions if those miles were driven by a gasoline powered car.  
+
+### 🏆 Highest Electric Vehicle Usage with Clean Power Sources
+
+```{r}
+#| label: task_7_determine_winners_award_3
+
+results |>
+  slice_max(total_clean_energy, n = 1) |> 
+  select(Agency,total_clean_energy) |>
+  rename(`kWh of Clean Energy Used for Electric Vehicles`=total_clean_energy) |>
+  gt() |>
+  fmt_number(`kWh of Clean Energy Used for Electric Vehicles`,decimal=0) |> 
+  tab_header(title="Agency with the Most Clean Energy Used to Power Electric Vehicles")
+```
+For this award, we look at the transit agencies with respect to the primary power source in their state. If the primary power source is nuclear, wind, or hydroelectric, we take the amount of kWh used for electric vehicles. The agency that has the highest amount of electric vehicle usage with a clean energy source is the Chicago Transit Authority with 340 Wh of clean energy used. 
+
+
+We can see in the graph below just how much the Chicago Transit Authority (highlighted) beats out its competitors. 
+
+```{r}
+#| label: task_7_determine_winners_award_3_plot
+#| output: true
+
+results |>
+  filter(total_clean_energy > 0) |>
+  arrange(desc(total_clean_energy)) |>
+  mutate(Agency = factor(Agency, levels = Agency)) |>
+  ggplot(aes(x = Agency, y = total_clean_energy)) +
+  geom_bar(stat = "identity") +
+  scale_y_continuous(
+    name = "Total Amount of Clean Energy Used (kWh)",
+    breaks = scales::pretty_breaks(n = 6)
+  ) +
+  scale_x_discrete(breaks = function(x) {
+    x[c(TRUE, FALSE)]
+  }, labels = abbreviate, name = "Agency Name (Abbreviated)") +
+  theme(axis.text.x = element_text(angle = -45, hjust = 0)) + 
+  gghighlight(total_clean_energy > 300000) + 
+  labs(title="Electricity Used in  Transit Agency Electric Vehicles within States with Primary Clean Energy Sources")
+```
+Names are abbreviated or removed to save space. 
+
+### 🚫🏆🚫 Better Luck Next Time - Most Emissions Per Passenger Trip for a Small Agency 
+
+```{r}
+#| label: task_7_determine_winners_award_4
+#| output: true
+results |>
+  filter(size == "Small") |>
+  slice_max(tot_em_per_mile, n = 1) |>
+  select(Agency,tot_em_per_mile) |>
+  rename(`Total Emissions Per Mile`=tot_em_per_mile) |>
+  gt()
+  
+```
+The Altoona Metro Transit gets our Better Luck Next Time award for being the heaviest emitter per mile with 13 pounds of CO2 emitted per mile. 
+
+[^1]: Not to be confused with the similarly named Green Transit Alliance for Variance or the Green Transit Alliance for Variance of Investigations.
 
