@@ -200,7 +200,7 @@ EIA_SEP_REPORT |>
   gt() |>
   fmt_number(`Total CO2 Emiited`, decimal = 0)
 ```
-We can see a striking difference in the amount of CO2 emitted between New York and Texas. Texas emitted approximately *7* times the amount of CO2 as New York does. 
+We can see a striking difference in the amount of CO2 emitted between New York and Texas. Texas emitted approximately 7 times the amount of CO2 as New York does. 
 
 ```{r}
 #| label: load_energy_consumption_data
@@ -338,10 +338,7 @@ NTD_SERVICE <- NTD_SERVICE_RAW |>
 
 rm(NTD_SERVICE_RAW)
 ```
-
-
-### 
-
+### Which transit service has the most UPT annually?
 ```{r}
 #| label: task_4_upt
 #| output: true
