@@ -1,11 +1,773 @@
 ---
-title: "mini_project_3"
+title: "Nostalgia Exploration (Mini Project 3)"
 format: 
   html: 
     code-fold: true
+engine: knitr
 execute:
-  echo: false
-  output: false
-draft: True
+  freeze: false
+  echo: true
+  output: true
+  warning: false
+  error: false
+draft: False
 ---
 
+# Anchors 
+
+I've chosen two songs I remember from my teenage years[^1] as anchor songs. We will return to these later once the our initial exploration of the data set is complete. 
+
+## Bruises by Chairlift
+{{< video https://www.youtube.com/watch?v=ZQ9hLOHj8ag >}} 
+## 1234 by Feist
+{{< video https://www.youtube.com/watch?v=ABYnqp-bxvg >}} 
+
+# Analysis
+
+## Preparing and Loading the Data
+
+```{r}
+#| label: load_data_and_define_helper_funcs
+library(tidyr)
+library(stringr)
+library(dplyr)
+library(httr2)
+library(jsonlite)
+library(glue)
+library(purrr)
+library(gt)
+library(lubridate)
+library(ggplot2)
+library(scales)
+library(readr)
+library(ggrepel)
+
+
+
+get_spotify_data <- function() {
+  if (!file.exists("data/mp03/spotify_data.csv")) {
+    dir.create("data/mp03", showWarnings = FALSE, recursive = TRUE)
+
+    github_data <- "https://raw.githubusercontent.com/gabminamedez/spotify-data/refs/heads/master/data.csv"
+
+    download.file(github_data, "data/mp03/spotify_data.csv")
+  }
+
+  spotify_data <- read_csv("data/mp03/spotify_data.csv")
+
+  return(spotify_data)
+}
+
+
+clean_artist_string <- function(x) {
+  x |>
+    str_replace_all("\\['", "") |>
+    str_replace_all("'\\]", "") |>
+    str_replace_all("[ ]?'", "") |>
+    str_replace_all("[ ]*,[ ]*", ",")
+}
+
+spotify_data <- get_spotify_data() |>
+  separate_longer_delim(artists, ",") |>
+  mutate(artist = clean_artist_string(artists)) |>
+  select(-artists)
+
+strip_spotify_prefix <- function(x) {
+  str_extract(x, ".*:.*:(.*)", group = 1)
+}
+
+load_playlists <- function(refresh = FALSE) {
+  # Get File Names
+  if (refresh == TRUE) {
+    playlist_data_source <- "https://api.github.com/repos/DevinOgrady/spotify_million_playlist_dataset/contents/data1"
+    req <- request(playlist_data_source)
+    resp <- req_perform(req)
+    batch_data <- fromJSON(resp_body_string(resp))
+    files <- batch_data |>
+      bind_rows() |>
+      select(name, download_url)
+    # Init empty list to store playlist values
+    results_list <- list()
+    # Get Files
+    for (i in 1:nrow(files)) {
+      row <- files[i, ]
+      if (!file.exists(glue("data/mp03/{row$name}"))) {
+        download.file(row$download_url, glue("data/mp03/{row$name}"))
+      }
+
+      nested_data <- fromJSON(glue("data/mp03/{row$name}"))$playlists
+      nested_data <- nested_data |>
+        select(-c(duration_ms)) |>
+        unnest(cols = tracks)
+
+      results_list[[i]] <- nested_data
+    }
+
+    playlist_data <- bind_rows(results_list)
+    playlist_data <- playlist_data |>
+      mutate(
+        track_id = strip_spotify_prefix(track_uri),
+        artist_id = strip_spotify_prefix(artist_uri),
+        album_id = strip_spotify_prefix(album_uri)
+      ) |>
+      rename(c(
+        playlist_name = name,
+        playlist_id = pid,
+        playlist_position = pos,
+        playlist_followers = num_followers,
+        duration = duration_ms
+      )) |>
+      select(-c(
+        modified_at,
+        num_edits,
+        description,
+        collaborative,
+        track_uri,
+        artist_uri,
+        album_uri
+      ))
+
+    write.csv(playlist_data, file = "data/mp03/playlist_data.csv", sep = ",", row.names = FALSE)
+  } else {
+    playlist_data <- read_csv("data/mp03/playlist_data.csv")
+  }
+
+  return(playlist_data)
+}
+
+
+
+
+playlist <- load_playlists()
+```
+
+## Initial Exploration 
+### How many distinct songs and artists are in the playlist data? 
+
+```{r}
+#| label: task_4_1
+
+unique_song_count <- playlist |>
+  select(track_id) |>
+  n_distinct()
+
+unique_artist_count <- playlist |>
+  select(artist_id) |>
+  n_distinct()
+```
+There are `{r} unique_song_count` unique songs and `{r} unique_artist_count` distinct artists in the data set. 
+
+### What are the five most popular tracks in the playlist data? 
+
+```{r}
+#| label: task_4_2
+
+playlist |>
+  group_by(track_id, artist_name, track_name) |>
+  summarise(num_entries = n()) |>
+  ungroup() |>
+  slice_max(num_entries, n = 5) |>
+  select(artist_name, track_name, num_entries) |>
+  rename(Aritst=artist_name,
+         `Song Name`=track_name,
+         `Number of Playlist Appearances`=num_entries) |>
+  gt()|>
+    tab_header(
+    title = "Top Five Songs Featured in the Most Playlists that is not in the Characteristics Dataset")
+```
+Kendrick Lamar's HUMBLE is the most popular song to be put into a playlist. It is featured on over 13,000 playlists. 
+
+{{< video https://www.youtube.com/watch?v=tvTRZJ-4EyI >}}
+
+### What is the most popular track in the playlist data that does not have a corresponding entry in the song characteristics data?
+```{r}
+#| label: task_4_3
+#| output: true
+
+paired_down_data <- spotify_data |>
+  select(id, name) |>
+  unique()
+
+anti_join(playlist, paired_down_data, by = join_by(track_id == id)) |>
+  group_by(artist_name, track_name) |>
+  summarise(num_entries = n()) |>
+  ungroup() |>
+  slice_max(num_entries, n = 1) |>
+  rename(`Song Name`=track_name,
+         Artist=artist_name) |> 
+  gt() |>
+    tab_header(
+    title = "Most Popular Song that does not have an Entry in the Characteristics Dataset")
+```
+
+The most popular song in the playlist data that does not have an entry in the Spotify characteristics data is Drake's One Dance. 
+
+{{< video https://www.youtube.com/watch?v=qL7zrWcv6XY >}}
+
+### According to the song characteristics data, what is the most “danceable” track? How often does it appear in a playlist?
+
+```{r}
+#| label: task_4_4_a
+
+spotify_data |>
+  slice_max(danceability, n = 1) |>
+  select( artist, name) |>
+  rename(Artist=artist,
+         `Song Name`=name) |> 
+  gt()  |>
+  tab_header(
+    title = "The Most Danceable Song")
+```
+
+{{< video https://www.youtube.com/watch?v=63ZIf2H9S0E >}}
+
+```{r}
+#| label: task_4_4_b
+
+playlist |>
+  filter(track_id == "5YIF6HSOtHN9HdcE5IPzMe") |>
+  group_by(track_name) |>
+  summarize(count = n()) |>
+  rename(
+    `Song Name` = track_name,
+    `Number of Playlist Appearances` = count
+  ) |>
+  gt()
+```
+
+Funky Cold Medina is features in 211 playlists. 
+
+### Which playlist has the longest average track length?
+```{r}
+#| label: task_4_5
+playlist |>
+  group_by(playlist_id, playlist_name) |>
+  summarize(avg_song_length_minutes = mean(duration) / 60000) |>
+  ungroup() |>
+  slice_max(avg_song_length_minutes, n = 1) |>
+  rename(
+    `Playlist ID` = playlist_id,
+    `Playlist Name` = playlist_name,
+    `Average Song Duration in Minutes` = avg_song_length_minutes
+  ) |>
+  gt()|> 
+  tab_header("Playlist with the Most Longest Average Song Duration") 
+```
+
+The playlist Mixes has the longest average track length at ~64.5 minutes a track. 
+
+### What is the most popular playlist on Spotify?
+```{r}
+#| label: task_4_6
+playlist |>
+  select(playlist_id, playlist_name, playlist_followers) |>
+  unique() |>
+  slice_max(playlist_followers, n = 1) |>
+  rename(
+    `Playlist ID` = playlist_id,
+    `Playlist Name` = playlist_name,
+    `Total Number of Playlist Followers` = playlist_followers
+  ) |>
+  gt() |>
+  tab_header("Playlist with the Most Followers") 
+```
+Using the playlist follower count as a measurement for playlist popularity, Breaking Bad is the most popular playlist at 53,519 followers.
+
+## Popularity Characteristics 
+
+```{r}
+#| label: prepare_data_for_task_5
+
+joined_data <- inner_join(playlist, spotify_data, by = join_by(track_id == id), multiple = "first")
+
+
+index <- c(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+key_str <- c("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
+key_mapping <- data.frame(index, key_str)
+# https://en.wikipedia.org/wiki/Chromatic_scale
+
+joined_data <- left_join(joined_data, key_mapping, by = join_by(key == index))
+spotify_data <- left_join(spotify_data, key_mapping, by = join_by(key == index))
+```
+### Is the popularity column correlated with the number of playlist appearances? If so, to what degree?
+
+We will define popularity as having a popularity score of at least 65. 
+
+```{r}
+#| label: task_5_1
+#| echo: false
+
+joined_data |>
+  group_by(track_id, track_name, popularity) |>
+  summarize(n_playlist_appearances = n()) |>
+  ungroup() |>
+  select(-c(track_id, track_name)) |>
+  rename(
+    `Popularity` = popularity,
+    `Number of Appearances on Playlists` = n_playlist_appearances
+  ) |>
+  ggplot(aes(x = `Popularity`, y = `Number of Appearances on Playlists`)) +
+  geom_hex() +
+  geom_vline(
+    xintercept = 65,
+    linetype = "dashed",
+    color = "red"
+  ) +
+  guides(fill = guide_legend("Measurement Density")) + 
+  ggtitle("Song Popularity vs Number of Appearances on Playlists") +
+  theme_bw()
+```
+Based on the chart, we see that a song is more likely to be in over 5,000 playlists if it has a popularity score of at least 65 compared to songs with popularity scores of less than 65.
+
+It is interesting to note that the majority of the songs in the joined data set appear to have a popularity between 25 and 65 but also are not featured in that many playlists. This may be because of the popularity differences between the singles of an album and the rest of the songs on an album. It is also likely that older songs are less popular and featured in fewer playlists across the board.
+
+### In what year were the most popular songs released?
+
+
+
+
+```{r}
+#| label: task_5_2
+
+popularity_check <- joined_data |>
+  select(track_id, year, popularity) |>
+  unique() |>
+  filter(popularity >= 65) |>
+  group_by(year) |>
+  summarize(count = n()) |>
+  ungroup()
+
+popularity_check |>
+  rename(
+    `Year` = year,
+    `Number of Songs over the Popularity Threshold` = count
+  ) |>
+  ggplot(aes(x = `Year`, y = `Number of Songs over the Popularity Threshold`)) +
+  geom_bar(stat = "identity") +
+  ggtitle("Popular Song Releases by Year Released") +
+    scale_fill_manual(values = c('steelblue'))+
+
+  theme_bw()
+```
+We can see that the most popular songs were released in the year 2017, with 502 tracks of at least a score of 65. 
+
+## In what year did danceability peak?
+```{r}
+#| label: task_5_3
+
+dance_dance_dance_til_youre_dead <- joined_data |>
+  select(track_id, year, danceability) |>
+  unique() |>
+  group_by(year) |>
+  summarize(average_danceability = mean(danceability)) |>
+  ungroup()
+
+heads_will_roll <- dance_dance_dance_til_youre_dead |>
+  slice_max(average_danceability, n = 1) |>
+  select(year)
+
+dance_dance_dance_til_youre_dead |>
+  rename(
+    `Year` = year,
+    `Average Danceability` = average_danceability
+  ) |>
+  ggplot(aes(x = `Year`, y = `Average Danceability`)) +
+  geom_bar(stat = "identity") +
+  ggtitle("Average Danceability by Year of Release") +
+  scale_fill_manual(values = c('steelblue'))+
+  coord_cartesian(ylim=c(0.4,0.8)) + 
+  theme_bw()
+```
+
+Average danceability peaked in the year `{r}  pull(heads_will_roll)`. 
+
+## Which decade is most represented on user playlists? 
+```{r}
+#| label: task_5_4
+
+joined_data |>
+  select(playlist_id, track_id, year, ) |>
+  mutate(decade_mapper = (year %/% 10) * 10) |>
+  unique() |>
+  group_by(decade_mapper) |>
+  summarize(count = n()) |>
+  ungroup() |>
+  rename(
+    `Decade` = decade_mapper,
+    `Number of Songs` = count
+  ) |>
+  ggplot(aes(x = `Decade`, y = `Number of Songs`)) +
+  geom_bar(stat = "identity") +
+  scale_y_continuous(labels=scales::label_comma()) +
+  ggtitle("Number of Songs in Playlists by Decade of Release") + 
+  scale_fill_manual(values = c('steelblue'))+
+  theme_bw()
+```
+The 2010's are the most heavily represented in the playlist data. 
+
+## What musical keys are the most represented? 
+```{r}
+#| label: task_5_5
+key_data <- spotify_data |>
+  select(id, key_str) |>
+  unique() |>
+  group_by(key_str) |>
+  summarize(count = n())
+
+key_data_2 <- key_data |>
+  mutate(
+    csum = rev(cumsum(rev(count))),
+    pos = count / 2 + lead(csum, 1),
+    pos = if_else(is.na(pos), count / 2, pos)
+  )
+
+key_data |>
+  ggplot(aes(x = "", y = count, fill = key_str)) +
+  geom_bar(stat = "identity", width = 10) +
+  coord_polar("y", start = 0) +
+  scale_y_continuous(breaks = key_data_2$pos, labels = key_data_2$key_str) +
+  geom_text(aes(label = count),
+    position = position_stack(vjust = 0.5),label.size=0.1
+  ) +
+  scale_fill_manual(values = c(
+    "#8dd3c7", "#ffffb3", "#bebada", "#fb8072", "#80b1d3",
+    "#fdb462", "#b3de69", "#fccde5", "#d9d9d9", "#bc80bd",
+    "#ccebc5", "#ffed6f"
+  )) +
+  theme_void() +
+  theme(axis.text = element_text(size = 15), legend.position = "none") + 
+  ggtitle("Number of Songs in Characteristics Data by Key of Song ")
+```
+The most common key is C with 22,499 unique tracks. 
+
+## What are the most popular track lengths? 
+
+```{r}
+#| label: task_5_6
+
+joined_data |>
+  select(track_id, duration) |>
+  unique() |>
+  # convert miliseconds to minutes
+  mutate(`Duration in Minutes` = duration / 60000) |>
+  ggplot(aes(x = `Duration in Minutes`)) +
+  geom_histogram() +
+  xlim(0, 10) +
+  ggtitle("Number of Songs by Track Length in Minutes")+
+  ylab("Number of Songs") +
+  scale_fill_manual(values = c('steelblue'))+
+  theme_bw()
+```
+
+The average duration of a song on the playlist is 3.75 minutes or 3 minutes and 45 seconds. We have limited the x-axis so that the max length is 10 minutes in this view. 
+
+
+## Is there a relationship between danceability and tempo? 
+```{r}
+#| label: task_5_7_1
+
+spotify_data |>
+  mutate(decade_mapper = (year %/% 10) * 10) |>
+  select(id, decade_mapper, tempo, danceability) |>
+  unique() |>
+  rename(
+    `Tempo` = tempo,
+    `Danceability` = danceability
+  ) |>
+  ggplot(aes(x = `Tempo`, y = `Danceability`)) +
+  geom_hex() +
+  guides(fill = guide_legend("Measurement\nDensity")) +
+  facet_wrap(vars(decade_mapper))  +
+  theme_bw() + 
+  ggtitle("Danceability Compared to Tempo over Several Decades")
+```
+There's a noticeable bump in dancibility vs. tempo around 125 for most of the decades plotted. The exact "center of mass" seems to be changing throughout the decades, but people seem to be pushed to the dance floor consistently more around 125 bpm. 
+
+## Does acousticness matter for popularity? 
+
+```{r}
+spotify_data |>
+  mutate(decade_mapper = (year %/% 10) * 10) |>
+  select(id, decade_mapper, acousticness, popularity) |>
+  unique() |>
+  rename(
+    `Acousticness` = acousticness,
+    `Popularity` = popularity,
+  ) |>
+  ggplot(aes(x = `Acousticness`, y = `Popularity`)) +
+  geom_hex() +
+  guides(fill = guide_legend("Measurement\nDensity")) +
+  facet_wrap(vars(decade_mapper)) +
+  theme_bw() +
+    ggtitle("Acousticness Compared to Popularity over Several Decades")
+
+```
+We can see an interesting trend in the data when we control for the decade. Acousticness matters for popularity for songs up until the 50's, but from the 60's onward it does not matter. We can also see how the popularity floor raises from the 60's onward. Newer music is the most popular on the platform. 
+
+
+# Mixtape 
+## Code used to analyze the anchor songs
+
+```{r}
+#| label: task_6_1
+#| eval: false
+# anchor song Bruises
+
+# isolate song stats
+bruises <- spotify_data |> filter(id == "4mdyVTV7Tr5YDFnD2kvSM4")
+bruises <- left_join(bruises, key_mapping, by = join_by(key == index))
+
+# same key and tempo
+chairlist_key_and_tempo <- spotify_data |>
+  filter(key == 0, tempo >= 185, tempo <= 186) |>
+  select(artist, name, id) |>
+  unique()
+
+
+# same artist
+chairlift <- spotify_data |> filter(artist == "Chairlift", id != "4mdyVTV7Tr5YDFnD2kvSM4")
+
+
+
+# Similar valence and year
+similar_valaence_and_year <- spotify_data |>
+  filter(valence >= 0.8, valence <= .9, year == 2008) |>
+  select(artist, name, id) |>
+  unique()
+
+
+# similar songs from other playlists
+bruises_playlists <- joined_data |>
+  filter(track_id == "4mdyVTV7Tr5YDFnD2kvSM4") |>
+  select(playlist_id) |>
+  unique()
+
+
+bruises_similar_playlists <- joined_data |>
+  filter(playlist_id %in% bruises_playlists$playlist_id) |>
+  arrange(desc(playlist_followers)) |>
+  filter(artist_name != "Chairlift") |>
+  select(name, artist, track_id) |>
+  unique()
+```
+
+```{r}
+#| label: task_6_2
+#| eval: false
+# Anchor Song
+# Feist - 1234 2CzWeyC9zlDpIOZPUUKrBW
+
+# isolate song stats
+feist_1234 <- spotify_data |> filter(id == "2CzWeyC9zlDpIOZPUUKrBW")
+feist_1234 <- left_join(feist_1234, key_mapping, by = join_by(key == index))
+
+
+
+# same key and tempo
+same_key_and_tempo_feist <- spotify_data |>
+  filter(key == 2, tempo >= 105, tempo <= 115) |>
+  arrange(desc(popularity)) |>
+  select(id, artist, name, popularity) |>
+  unique()
+
+# same artist
+fiest <- spotify_data |> filter(artist == "Feist", id != "2CzWeyC9zlDpIOZPUUKrBW")
+
+
+# matching year with similar tempo
+same_year_and_tempo_feist <- spotify_data |>
+  filter(year == 2007) |>
+  filter(tempo >= 105, tempo <= 115) |>
+  select(id, name, artist)
+
+
+same_year_and_energy_feist <- spotify_data |>
+  filter(energy >= 0.4, energy <= 0.5, year == 2007) |>
+  select(artist, name, popularity)
+
+
+feist_1234_playlists <- joined_data |>
+  filter(track_id == "2CzWeyC9zlDpIOZPUUKrBW") |>
+  select(playlist_id) |>
+  unique()
+
+
+feist_playlists_similar <- joined_data |>
+  filter(playlist_id %in% feist_1234_playlists$playlist_id) |>
+  filter(artist_name != "Feist") |>
+  select(artist_name, track_name, track_id) |>
+  unique()
+```
+The above code was run to select a large batch of candidates. Following this, the dataframes were manually inspected to refine the candidates. 
+
+## Playlist candidates 
+```{r}
+candidates <- spotify_data |>
+  filter(id %in% c(
+    "2KjJhGtseXQBI5Cg6ZZdc9",
+    "221bl0jrSfJ1LMgUw36zRJ",
+    "4VNWVzVj6QnNwasZBjPGdu",
+    "0aqRkWPAL9BGCvvdSiXaE9",
+    "4mdyVTV7Tr5YDFnD2kvSM4",
+    "4g3iTV4Pr70I4o2xMJCZGL",
+    "1595LW73XBxkRk2ciQOHfr",
+    "6tN0t7Y1bFI1ZU98Ou8Z3i",
+    "2KjJhGtseXQBI5Cg6ZZdc9",
+    "1I7zHEdDx8Ny5RxzYPqsU2",
+    "5IRWgQiN0c2i4U97iE3OoY",
+    "3OeUlriM0EZHdWleJtjoVr",
+    "0GO8y8jQk1PkHzS31d699N",
+    "6cdslY3YKjh7pImxFhSBVG",
+    "2CzWeyC9zlDpIOZPUUKrBW",
+    "6QPhpvO1pWDS91EsEmzsbc",
+    "43YJuMTeTEV5FyjVfBqwyf",
+    "51R5mPcJjOnfv9lKY1u5sW",
+    "6Hmj7SrLRbreLVfVS7mV1S",
+    "0VXp4zDspR993l2hIKW17g",
+    "52PuLmsxTDOI2WAqpzYjoT",
+    "6Ge2Ob69SEZ2l78e3IE0Aw",
+    "1NeLwFETswx8Fzxl2AFl91",
+    "6AKSrodq9kU9hmTLEeWFFr",
+    "3kZC0ZmFWrEHdUCmUqlvgZ",
+    "4Y3gLYlV5rD3fhirhWKtei",
+    "2RlgNHKcydI9sayD2Df2xp",
+    "1YLJVmuzeM2YSUkCCaTNUB",
+    "ghgwo0BTPm329zGMQRfn7",
+    "5FFQbvn7055P1DvgJDdCBP"
+  )) |>
+  select(
+    id, name, artist, year, acousticness, danceability, energy,
+    instrumentalness, liveness, loudness, speechiness, tempo, valence,
+    popularity, key_str
+  )
+
+candidates |>
+  select(name, artist, year) |>
+  rename(
+    `Artist` = artist,
+    `Song Name` = name,
+    Year = year
+  ) |>
+  gt() |>
+  tab_header(
+    title = "Manually Selected Candidate Songs")
+```
+
+Here we have our list of candidates. Let us see what can be done to refine the list further.
+
+```{r}
+#| label: exploring_tempo
+
+candidates |>
+  select(id, name, energy, tempo) |>
+  ggplot(aes(x = energy, y = tempo)) +
+  geom_point() +
+  geom_label_repel(
+    data = subset(candidates, id %in% c("2CzWeyC9zlDpIOZPUUKrBW", "4mdyVTV7Tr5YDFnD2kvSM4")),
+    aes(label = name),
+    box.padding = 0.35,
+    point.padding = 0.5,
+    segment.color = "grey50"
+  ) + 
+  theme_bw()
+```
+Based on this, we can remove the songs with an energy score that is less than that of '1234'. We then get the below list of songs, but let's see if we can refine this even more. 
+
+```{r}
+#| label: energy_filter
+
+energy_filter <- candidates |>
+  filter(id == "2CzWeyC9zlDpIOZPUUKrBW") |>
+  select(energy) |>
+  pluck(1)
+
+candidates <- candidates |>
+  filter(energy >= 0.484)
+
+candidates |>
+  select(name, artist, year) |>
+  rename(
+    `Artist` = artist,
+    `Song Name` = name,
+    Year = year
+  ) |>
+  gt() |>
+  tab_header(
+    title = "Refined Candidate Songs")
+```
+
+```{r}
+#| label: exploring_valance
+
+candidates |>
+  select(id, name, valence, danceability) |>
+  ggplot(aes(x = valence, y = danceability)) +
+  geom_point() +
+  geom_label_repel(
+    data = subset(candidates, id %in% c("2CzWeyC9zlDpIOZPUUKrBW", "4mdyVTV7Tr5YDFnD2kvSM4")),
+    aes(label = name),
+    box.padding = 0.6,
+    point.padding = 0.5,
+    segment.color = "grey50"
+  ) +
+  geom_segment(x = 0, y = 1, xend = 1, yend = 0, color = "red", linetype = "dashed") +
+  theme_bw()
+```
+From this chart, we can see a distinct split in the data into two clusters (while keeping our anchor songs in the playlist) with the function $y=1-x$ with respect to the danceability and valence of a song. We will filter out anything below the red dashed line. This is make sure that the playlist optimized happy 
+
+As a final step, we will organize our songs by the Spotify energy metric, so that our playlist becomes more exciting before reaching the crescendo. 
+
+
+
+```{r}
+#| label: more_filtering
+
+final_playlist <- candidates |>
+  mutate(side_of_line = ifelse(danceability > 1 - valence, "above", "below")) |>
+  filter( side_of_line =='above' ) |>
+  arrange(energy)
+
+final_playlist |>
+  select(name, artist, year,popularity) |>
+  rename(
+    `Artist` = artist,
+    `Song Name` = name,
+    Year = year,
+    Popularity = popularity
+  ) |>
+  gt() |> 
+  tab_header(
+    title = "The Ultimate Playlist")
+```
+Above, we have our final playlist.
+
+
+
+# Playlist 
+Check out the ultimate playlist below! I have optimized for happy feeling gons that can be danced to (according to Spotify).
+## 1234 by Feist
+{{< video https://www.youtube.com/watch?v=ABYnqp-bxvg >}} 
+## My Moon My Man by Feist
+{{< video https://www.youtube.com/watch?v=ltYq-jalYm0 >}}
+## Bruises by Chairlift
+{{< video https://www.youtube.com/watch?v=ZQ9hLOHj8ag >}} 
+## Ce jeu by Yelle
+{{< video https://www.youtube.com/watch?v=8QOxKCKC09A >}}
+## Settle Down by Kimbra
+{{< video https://www.youtube.com/watch?v=yHV04eSGzAA  >}}
+## Crush by Dave Matthews Band
+{{<video https://www.youtube.com/watch?v=elUwSHjfA94 >}}
+## Reelin' in the Years by Steely Dan
+{{< video https://www.youtube.com/watch?v=4dPRGfGmCmU >}}
+## I Belong in Your Arms by Chairlift
+{{< video https://www.youtube.com/watch?v=6RRc0T3l1Co >}}
+## A-Punk by Vampire Weekend
+{{< video https://www.youtube.com/watch?v=_XC2mqcMMGQ >}}
+## Got My Mind Set On You by George Harrison 
+{{< video https://www.youtube.com/watch?v=_71w4UA2Oxo >}}
+## Shut Up and Let Me Go by the Ting Tings
+{{< video https://www.youtube.com/watch?v=tolm-07if3c >}}
+
+
+
+[^1]: Only after doing the analysis did I realize that they were both used in iPod commercials!
