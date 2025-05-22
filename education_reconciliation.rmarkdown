@@ -1,0 +1,693 @@
+---
+title: "Final Individual Report - Connecticut Education"
+format: 
+  html: 
+    code-fold: true
+engine: knitr
+execute:
+  echo: true
+  output: false
+draft: false
+---
+
+
+
+# Connecticut Education 
+## Data Sources
+### Next Generation Accounatbility System
+
+
+The [Next Generation Accounability System](https://data.ct.gov/Education/Next-Generation-Accountability-System/h28j-iix5/about_data) is published annually by Connecticut and is a set of 12 indicators used to rate how well a school or district is preparing students for careers or college. The indicators are : 
+- Academic achievement status measured by state assessments
+- Academic growth
+- Assessment participation rate
+- Chronic absenteeism
+- Postsecondary preparation - coursework
+- Postsecondary readiness – exams and college credit
+- Graduation – on track in ninth grade
+- Graduation – four-year adjusted cohort graduation rate – all students
+- Graduation – six-year adjusted cohort graduation rate – high needs
+- Postsecondary entrance rate – all students (college enrollment)
+- Physical fitness
+- Arts access
+
+Most of the indicators are broken down further between high need and non-high need students. 
+
+The data is at the school, district, and state level. To get the town and county information to properly link to the sales data, a mapping of school district to town was downloaded from
+[GreatSchools.org](https://www.greatschools.org/schools/districts/Connecticut/CT/). 
+
+### CT Sales Data
+
+The sales data was also cleaned to remove vacant lots and commercial property. We are only interested in residential lots. 
+
+
+
+```{r}
+#| output: false
+#| echo: false
+library(dplyr)
+library(rvest)
+library(stringr)
+library(ggplot2)
+library(MASS)
+library(tidyverse)
+library(vip)
+library(tidymodels)
+
+
+get_data <- function(refresh = FALSE) {
+  data <- read_csv("/home/craig/Classes/CT-HousingLens/data/Next_Generation_Accountability_System_20250405.csv") |>
+    filter(ReportingDistrictCode != 0) # filter out state level data
+
+
+  ct_sales <- read_csv("/home/craig/Classes/CT-HousingLens/data/processed_Real_Estate_Sales_2001-2022_GL.csv") |>
+    filter(sale_amount != 0) |>
+    filter(sale_amount > 0, property_type != "Commercial" & property_type != "Vacant Land" & !is.na(property_type)) 
+
+  #Normalize data with Box-Cox
+  # lambda Determined with code using lm_agg variable defined below 
+  # hist(lm_agg$sale_amount)
+  #b c <- boxcox(lm(sale_amount ~ avg_score, data = lm_agg))
+  #lambda <- bc$x[which.max(bc$y)]
+
+
+  if (refresh == TRUE) {
+    url <- "https://www.greatschools.org/schools/districts/Connecticut/CT/"
+
+    webpage <- read_html(url)
+
+    ct_towns_school_district <- webpage |>
+      html_table(fill = TRUE, header = TRUE)
+    ct_towns_school_district <- as.data.frame(ct_towns_school_district)
+  } else {
+    ct_towns_school_district <- read_csv("/home/craig/Classes/CT-HousingLens/data/ct_towns_school_district.csv")
+  }
+
+  consolidated <- left_join(data, ct_towns_school_district, join_by("RptngDistrictName" == "District.name")) |>
+    filter(!is.na(City)) |>
+    mutate(county = str_replace_all(County.name, pattern = " County", repl = "")) |>
+    dplyr::select(-c(County.name))
+  return(list(consolidated = consolidated, ct_sales = ct_sales))
+}
+
+data <- get_data()
+
+consolidated <- data$consolidated
+ct_sales <- data$ct_sales
+ct_sales$list_year <- as.factor(ct_sales$list_year)
+consolidated$FallOfYear <- as.factor(consolidated$FallOfYear)
+# remove extraneous fields
+consolidated <- consolidated[, !grepl("oints|ossible|HN", perl = TRUE, names(consolidated))]
+
+
+
+district_level <- consolidated |>
+  filter(SchoolName == "District")
+
+school_level <- consolidated |>
+  filter(SchoolName != "District")
+
+
+ price_tier <- ct_sales |>
+  mutate(price_tier = case_when(
+    log(sale_amount) < quantile(log(sale_amount), 0.33) ~ "low",
+    log(sale_amount) < quantile(log(sale_amount), 0.66) ~ "medium",
+    TRUE ~ "high"
+  )) |>
+  group_by(list_year, county, town, price_tier) |>
+  summarize(count = n()) |>
+  ungroup() |>
+  group_by(list_year, county, town) |>
+  slice_max(count, with_ties = FALSE) |>
+  ungroup() |>
+  dplyr::select(-c(count))
+
+town_level_median <- ct_sales |>
+  filter(property_type != "Commercial") |>
+  dplyr::select(list_year, county, town, sale_amount) |>
+  group_by(list_year, county, town) |>
+  summarize(median_sale_price = median(log(sale_amount))) |>
+  ungroup()
+
+
+town_level_median$list_year <- as.factor(town_level_median$list_year)
+price_tier$list_year <- as.factor(price_tier$list_year)
+price_tier$price_tier <- as.factor(price_tier$price_tier)
+
+
+consolidated_individual_school <- left_join(school_level, price_tier, join_by(FallOfYear == list_year, City == town)) |>
+  filter(!is.na(price_tier)) |> 
+  dplyr::select(-c(
+    county.x, schoolyear, RptngDistrictName, SchoolCode, ReportingDistrictCode,
+    `Accountability Index`, SchoolName, City, county.y,
+    Hurdle_Mean_ELA, GradGapFlag,   
+    Hurdle_Means_Grad, Hurdle_Mean_Sci,Hurdle_Mean_Math, Hurdle_Mean_ELA, 
+    AchievementGapFlag, Category, FinalCategory,Ind3Math_All_Rate,
+Ind3Sci_All_Rate,
+    SupportType,,SupportCategory,Distinction,DistinctionCategory,Ind11ParticipationRate,
+    Ind1SciGap,Ind1MathGap,SchoolTitleIType,Ind1SciGap,Ind3PartRateFlag,
+    Ind1ELAGap,SchoolLowGrade,SchoolHighGrade,SchoolOrgType,Ind3ELA_All_Rate
+  ))
+
+
+consolidated_school_district <- left_join(district_level, price_tier, join_by(FallOfYear == list_year, City == town)) |>
+  filter(!is.na(price_tier)) |> 
+  dplyr::select(-c(
+    county.x, schoolyear, RptngDistrictName, SchoolCode, ReportingDistrictCode,
+    `Accountability Index`, SchoolName, City, county.y,
+     Hurdle_Mean_ELA, GradGapFlag,   Ind3Math_All_Rate,
+Ind3Sci_All_Rate,
+    Hurdle_Means_Grad, Hurdle_Mean_Sci,Hurdle_Mean_Math, Hurdle_Mean_ELA, 
+    AchievementGapFlag, Category, FinalCategory,Ind11ParticipationRate,
+    SupportType,,SupportCategory,Distinction,DistinctionCategory,
+    Ind1SciGap,Ind1MathGap,SchoolTitleIType,Ind1SciGap,Ind3PartRateFlag,
+    Ind1ELAGap,SchoolLowGrade,SchoolHighGrade,SchoolOrgType,Ind3ELA_All_Rate
+  ))
+
+
+consolidated_school_district_median_price <- left_join(district_level, town_level_median, join_by(FallOfYear == list_year, City == town)) |>
+  filter(!is.na(median_sale_price)) |> 
+  dplyr::select(-c(
+    county.x, schoolyear, RptngDistrictName, SchoolCode, ReportingDistrictCode,
+    `Accountability Index`, SchoolName, City, county.y,
+     Hurdle_Mean_ELA, GradGapFlag,   Ind3Math_All_Rate,
+Ind3Sci_All_Rate,
+    Hurdle_Means_Grad, Hurdle_Mean_Sci,Hurdle_Mean_Math, Hurdle_Mean_ELA, 
+    AchievementGapFlag, Category, FinalCategory,Ind11ParticipationRate,
+    SupportType,,SupportCategory,Distinction,DistinctionCategory,
+    Ind1SciGap,Ind1MathGap,SchoolTitleIType,Ind1SciGap,Ind3PartRateFlag,
+    Ind1ELAGap,SchoolLowGrade,SchoolHighGrade,SchoolOrgType,Ind3ELA_All_Rate
+    
+  )) 
+
+
+consolidated_individual_school<- consolidated_individual_school |> rename( c('Academic Achievement – Language Arts'=Ind1ELA_All_Rate,
+'Academic Achievement – Mathematics'=Ind1Math_All_Rate,
+'Academic Achievement – Science'=Ind1Sci_All_Rate,
+'Academic Growth – Language Arts'=Ind2ELA_All_Rate,
+'Academic Growth – Mathematics'=Ind2Math_All_Rate,
+'Attendance / Chronic Absence'=Ind4Rate,
+'Post Secondary Preparation'=Ind5Rate,
+'Post Secondary Readiness'=Ind6Rate,
+'On Track For Graduation'=Ind7Rate,
+'Four Year Graduation Rate'=Ind8Rate,
+'Six Year Graduation Rate for High Needs Students'=Ind9Rate,
+'Post Secondary Entrance'=Ind10Rate,
+'Physical Fitness'=Ind11FitnessRate,
+'Arts Access'=Ind12Rate,
+'Growth Towards English Literacy'=Ind2LEP_LTCY_Rate,
+'Growth Towards English Spoken Proficiency '=Ind2LEP_ORAL_Rate,
+))
+
+
+consolidated_school_district<- consolidated_school_district |> rename( c('Academic Achievement – Language Arts'=Ind1ELA_All_Rate,
+'Academic Achievement – Mathematics'=Ind1Math_All_Rate,
+'Academic Achievement – Science'=Ind1Sci_All_Rate,
+'Academic Growth – Language Arts'=Ind2ELA_All_Rate,
+'Academic Growth – Mathematics'=Ind2Math_All_Rate,
+'Attendance / Chronic Absence'=Ind4Rate,
+'Post Secondary Preparation'=Ind5Rate,
+'Post Secondary Readiness'=Ind6Rate,
+'On Track For Graduation'=Ind7Rate,
+'Four Year Graduation Rate'=Ind8Rate,
+'Six Year Graduation Rate for High Needs Students'=Ind9Rate,
+'Post Secondary Entrance'=Ind10Rate,
+'Physical Fitness'=Ind11FitnessRate,
+'Arts Access'=Ind12Rate,
+'Growth Towards English Literacy'=Ind2LEP_LTCY_Rate,
+'Growth Towards English Spoken Proficiency '=Ind2LEP_ORAL_Rate,
+))
+
+
+consolidated_school_district_median_price<- consolidated_school_district_median_price |> rename( c('Academic Achievement – Language Arts'=Ind1ELA_All_Rate,
+'Academic Achievement – Mathematics'=Ind1Math_All_Rate,
+'Academic Achievement – Science'=Ind1Sci_All_Rate,
+'Academic Growth – Language Arts'=Ind2ELA_All_Rate,
+'Academic Growth – Mathematics'=Ind2Math_All_Rate,
+'Attendance / Chronic Absence'=Ind4Rate,
+'Post Secondary Preparation'=Ind5Rate,
+'Post Secondary Readiness'=Ind6Rate,
+'On Track For Graduation'=Ind7Rate,
+'Four Year Graduation Rate'=Ind8Rate,
+'Six Year Graduation Rate for High Needs Students'=Ind9Rate,
+'Post Secondary Entrance'=Ind10Rate,
+'Physical Fitness'=Ind11FitnessRate,
+'Arts Access'=Ind12Rate,
+'Growth Towards English Literacy'=Ind2LEP_LTCY_Rate,
+'Growth Towards English Spoken Proficiency '=Ind2LEP_ORAL_Rate,
+))
+
+linear_regression_agg <- ct_sales |>
+  filter(property_type != "Commercial") |>
+  dplyr::select(list_year, county, town, sale_amount)
+
+linear_regression_agg$list_year <- as.factor(linear_regression_agg$list_year)
+consolidated$FallOfYear <- as.factor(consolidated$FallOfYear)
+
+school_district_rating <- district_level |>
+  group_by(FallOfYear, county, City) |>
+  summarise(avg_score = mean(`Accountability Index`))
+
+lm_agg <- left_join(linear_regression_agg, school_district_rating, join_by(list_year == FallOfYear, town == City, county == county)) |>
+  filter(!is.na(avg_score)) |>
+  mutate(`Year of Home Sale` = list_year)
+```
+
+
+
+To start the analysis, we take the average Accountability Index Score per town and use it as a predictor for the for the log of home sales prices in the town. The log transformation smoothed out the data sufficiently for the analysis. I later attempted a Box-Cox transformation of the housing data to find the optimal value, which was a $\lambda \approx -.1$. I determined that using the log of the sales data was sufficient and easier to implement throughout the analysis. 
+
+
+Below is the plot per year of the 
+
+
+
+
+```{r}
+ggplot(lm_agg, aes(x = avg_score, y = log(sale_amount), color = `Year of Home Sale`)) +
+  geom_point(alpha = 0.01) +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_minimal() +
+  labs(
+    x = "Average Accountabily Index Score per Town",
+    y = "Log of Homes Sales Prices($USD)",
+    title = "Accountability Index Score as a Predictor for Home Sale Value"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 0, hjust = 0.5),
+    plot.title = element_text(hjust = 0.5),
+    axis.title.x = element_text(margin = margin(t = 10)),
+    axis.title.y = element_text(margin = margin(r = 10))
+  ) +
+  scale_fill_discrete(name = "Year of Home Sale")
+```
+
+```{r}
+set.seed(234)
+
+
+splits <- initial_split(consolidated_individual_school, strata = price_tier)
+
+data_train <- training(splits)
+data_test <- testing(splits)
+
+val_set <- validation_split(data_train,
+  strata = price_tier,
+  prop = 0.80
+)
+cores <- parallel::detectCores()
+
+rf_mod <-
+  rand_forest(mtry = tune(), min_n = tune(), trees = 1000) %>%
+  set_engine("ranger", num.threads = cores) %>%
+  set_mode("classification")
+
+
+rf_recipe <-
+  recipe(price_tier ~ ., data = consolidated_individual_school) |>
+  step_zv(all_predictors())
+
+rf_workflow <-
+  workflow() %>%
+  add_model(rf_mod) %>%
+  add_recipe(rf_recipe)
+
+set.seed(345)
+rf_res <-
+  rf_workflow %>%
+  tune_grid(val_set,
+    grid = 250,
+    control = control_grid(save_pred = TRUE),
+    metrics = metric_set(roc_auc)
+  )
+
+rf_res %>%
+  collect_predictions()
+
+rf_best <- rf_res %>%
+  select_best(metric = "roc_auc")
+```
+
+```{r}
+rf_auc <-
+  rf_res %>%
+  collect_predictions(parameters = rf_best) %>%
+  roc_curve(price_tier, .pred_high,  .pred_medium, .pred_low)
+rf_auc %>%
+  ggplot(aes(x = 1 - specificity, y = sensitivity, col = .level)) +
+  geom_path(lwd = 1.5, alpha = 0.8) +
+  geom_abline(lty = 3) +
+  coord_equal() +
+  scale_color_viridis_d(option = "plasma", end = .6)
+```
+
+```{r}
+rf_best
+mtry_individual_school <- rf_best$mtry |> pluck()
+min_n_individual_school <- rf_best$min_n |> pluck()
+```
+
+```{r}
+last_rf_mod <-
+  rand_forest(mtry = mtry_individual_school, min_n = min_n_individual_school, trees = 1000) %>%
+  set_engine("ranger", num.threads = cores, importance = "impurity") %>%
+  set_mode("classification")
+
+# the last workflow
+last_rf_workflow <-
+  rf_workflow %>%
+  update_model(last_rf_mod)
+
+# the last fit
+set.seed(345)
+last_rf_fit <-
+  last_rf_workflow %>%
+  last_fit(splits)
+
+last_rf_fit
+```
+
+```{r}
+last_rf_fit %>%
+  extract_fit_parsnip() %>%
+  vip(num_features = 8) + 
+  ggtitle("Random Forest Model Variable Importance Plot for Housing Sales\n and Individual School Performance") +
+  theme_minimal()  + 
+  theme(plot.title.position = "plot",plot.title = element_text(hjust =.5 ))   
+
+```
+
+```{r}
+set.seed(234)
+
+
+splits <- initial_split(consolidated_school_district, strata = price_tier)
+
+data_train <- training(splits)
+data_test <- testing(splits)
+
+val_set <- validation_split(data_train,
+  strata = price_tier,
+  prop = 0.80
+)
+cores <- parallel::detectCores()
+
+rf_mod <-
+  rand_forest(mtry = tune(), min_n = tune(), trees = 1000) %>%
+  set_engine("ranger", num.threads = cores) %>%
+  set_mode("classification")
+
+
+rf_recipe <-
+  recipe(price_tier ~ ., data = consolidated_school_district) |>
+  step_zv(all_predictors())
+
+rf_workflow <-
+  workflow() %>%
+  add_model(rf_mod) %>%
+  add_recipe(rf_recipe)
+
+set.seed(345)
+rf_res <-
+  rf_workflow %>%
+  tune_grid(val_set,
+    grid = 250,
+    control = control_grid(save_pred = TRUE),
+    metrics = metric_set(roc_auc)
+  )
+
+rf_res %>%
+  collect_predictions()
+
+rf_best <- rf_res %>%
+  select_best(metric = "roc_auc")
+```
+
+```{r}
+rf_best
+mtry_school_district <- rf_best$mtry |> pluck()
+min_n_school_district <- rf_best$min_n |> pluck()
+```
+
+```{r}
+autoplot(rf_res)
+```
+
+```{r}
+rf_auc <-
+  rf_res %>%
+  collect_predictions(parameters = rf_best) %>%
+  roc_curve(price_tier, .pred_high, , .pred_medium, .pred_low)
+rf_auc %>%
+  ggplot(aes(x = 1 - specificity, y = sensitivity, col = .level)) +
+  geom_path(lwd = 1.5, alpha = 0.8) +
+  geom_abline(lty = 3) +
+  coord_equal() +
+  scale_color_viridis_d(option = "plasma", end = .6)
+```
+
+```{r}
+last_rf_mod <-
+  rand_forest(mtry = mtry_school_district, min_n = min_n_school_district, trees = 1000) %>%
+  set_engine("ranger", num.threads = cores, importance = "impurity") %>%
+  set_mode("classification")
+
+# the last workflow
+last_rf_workflow <-
+  rf_workflow %>%
+  update_model(last_rf_mod)
+
+# the last fit
+set.seed(345)
+last_rf_fit_2 <-
+  last_rf_workflow %>%
+  last_fit(splits)
+
+last_rf_fit_2
+```
+
+```{r}
+
+x <- last_rf_fit_2 %>%
+  extract_fit_parsnip() %>%
+  vip(num_features = 5) + 
+  ggtitle("Random Forest Variable Importance Plot for Housing Sales and \n School District Performance") +
+ theme_minimal()  + 
+  theme(plot.title.position = "plot",plot.title = element_text(hjust =.5 ),
+       )   
+  theme(axis.title = element_text(size = 15)) 
+
+ggsave("/home/craig/Classes/CT-HousingLens/random_forest_importance.png",x,device='png')
+```
+
+```{r}
+#| output: false
+consolidated_school_district_lm <- consolidated_school_district_median_price
+  
+
+
+full_model <- lm(log(median_sale_price) ~ ., data = consolidated_school_district_lm)
+min_model <- lm(log(median_sale_price) ~ 1, data = consolidated_school_district_lm)
+biggest <- formula(full_model)
+min <- formula(min_model)
+
+step_b_model <- stepAIC(full_model,
+  scope = list(
+    lower = min,
+    upper = biggest
+  ),
+  direction = "backward"
+)
+
+sig_b_vars <- names(which(coef(summary(step_b_model))[, 4] < 0.05))
+sig_b_vars
+summary(step_b_model)
+
+
+
+
+```
+
+```{r}
+
+consolidated_school_district_lm <- consolidated_school_district_lm |> 
+  rename("Sale Year"=FallOfYear)
+post_sec_only <-lm(log(median_sale_price) ~ `Post Secondary Readiness` + `Sale Year`, data = consolidated_school_district_lm)
+
+summary(post_sec_only)
+
+```
+
+```{r}
+set.seed(234)
+
+
+splits <- initial_split(consolidated_school_district_median_price, strata = median_sale_price)
+
+data_train <- training(splits)
+data_test <- testing(splits)
+
+val_set <- validation_split(data_train,
+  strata = median_sale_price,
+  prop = 0.80
+)
+cores <- parallel::detectCores()
+
+rf_r_mod <-
+  rand_forest(mtry = tune(), min_n = tune(), trees = 1000) %>%
+  set_engine("ranger", num.threads = cores) %>%
+  set_mode("regression")
+
+
+rf_r_recipe <-
+  recipe(median_sale_price ~ ., data = consolidated_school_district_median_price) |>
+  step_zv(all_predictors()) |>
+  step_dummy(all_nominal_predictors())
+
+rf_r_workflow <-
+  workflow() %>%
+  add_model(rf_r_mod) %>%
+  add_recipe(rf_r_recipe)
+
+set.seed(345)
+rf_r_res <-
+  rf_r_workflow %>%
+  tune_grid(val_set,
+    grid = 250,
+    control = control_grid(save_pred = TRUE)
+  )
+
+rf_r_res %>%
+  collect_predictions()
+
+rf_r_best <- rf_r_res %>%
+  select_best(metric = "rsq")
+```
+
+```{r}
+autoplot(rf_r_res)
+```
+
+```{r}
+rf_r_best
+mtry_school_district_regression <- rf_r_best$mtry |> pluck()
+min_n_school_district_regression <- rf_r_best$min_n |> pluck()
+```
+
+```{r}
+last_rf_r_mod <-
+  rand_forest(mtry = mtry_school_district_regression, min_n = min_n_school_district_regression, trees = 1000) %>%
+  set_engine("ranger", num.threads = cores, importance = "impurity") %>%
+  set_mode("regression")
+
+# the last workflow
+last_rf_r_workflow <-
+  rf_r_workflow %>%
+  update_model(last_rf_r_mod)
+
+# the last fit
+set.seed(345)
+last_rf_r_fit <-
+  last_rf_r_workflow %>%
+  last_fit(splits)
+
+last_rf_r_fit
+```
+
+```{r}
+p<-last_rf_r_fit %>%
+  extract_fit_parsnip() %>%
+  vip(num_features = 5) +
+   ggtitle("Random Forest Regression Model Variable Importance Plot \n for Housing Sales and  School District Performance") +
+  theme(plot.title.position = "plot",plot.title = element_text(hjust =.5 )
+       )
+
+ggsave("/home/craig/Classes/CT-HousingLens/random_forest_regression.png",p,device='png')
+```
+
+```{r}
+#| output: false
+#| echo: false
+
+consolidated_school_district_lm_2022 <- consolidated_school_district_median_price |> 
+  filter(FallOfYear=='2022') |> 
+  dplyr::select(-c(FallOfYear)) |>
+  na.omit()
+  
+
+
+full_model_2022 <- lm(log(median_sale_price) ~ ., data = consolidated_school_district_lm_2022)
+min_model_2022 <- lm(log(median_sale_price) ~ 1, data = consolidated_school_district_lm_2022)
+biggest_2022 <- formula(full_model)
+min_2022 <- formula(min_model)
+
+step_b_2022_model <- stepAIC(full_model_2022,
+  scope = list(
+    lower = min_2022,
+    upper = biggest_2022
+  ),
+  direction = "backward"
+)
+
+sig_b_2022_vars <- names(which(coef(summary(step_b_2022_model))[, 4] < 0.05))
+sig_b_2022_vars
+summary(step_b_2022_model)
+```
+
+```{r}
+#| output: false
+#| echo: false
+consolidated_school_district_lm_2021 <- consolidated_school_district_median_price |> 
+  filter(FallOfYear=='2021') |> 
+  dplyr::select(-c(FallOfYear)) |>
+  na.omit()
+  
+
+
+full_model_2021 <- lm(log(median_sale_price) ~ ., data = consolidated_school_district_lm_2021)
+min_model_2021 <- lm(log(median_sale_price) ~ 1, data = consolidated_school_district_lm_2021)
+biggest_2021 <- formula(full_model)
+min_2021 <- formula(min_model)
+
+step_b_2021_model <- stepAIC(full_model_2021,
+  scope = list(
+    lower = min_2021,
+    upper = biggest_2021
+  ),
+  direction = "backward"
+)
+
+sig_b_2021_vars <- names(which(coef(summary(step_b_2021_model))[, 4] < 0.05))
+sig_b_2021_vars
+summary(step_b_2021_model)
+```
+
+```{r}
+
+consolidated_school_district_median_price<- consolidated_school_district_median_price |> 
+  rename(`Year of Home Sale`=FallOfYear)
+```
+
+```{r}
+ggplot(consolidated_school_district_median_price, aes(x = `Post Secondary Readiness`, y = log(median_sale_price), color = `Year of Home Sale`)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_minimal() +
+  labs(
+    x = "Post Secondary Readiness of School District",
+    y = "Log of Homes Sales Prices($USD)",
+    title = "Post Secondary Readiness as a Predictor\n for Home Sale Value"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 0, hjust = 0.5),
+    plot.title = element_text(hjust = 0.5),
+    axis.title.x = element_text(margin = margin(t = 10)),
+    axis.title.y = element_text(margin = margin(r = 10))
+  ) +
+  scale_fill_discrete(name = "Year of Home Sale")
+```
+
+```{r}
+sig_b_2021_vars
+
+```
