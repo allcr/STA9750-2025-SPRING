@@ -15,19 +15,19 @@ draft: false
 ### Next Generation Accounatbility System
 
 
-The [https://data.ct.gov/Education/Next-Generation-Accountability-System/h28j-iix5/about_data](Next Generation Accounability System) is published annually by Connecticut and is a set of 12 indicators used to rate how well a school or district is preparing students for careers or college. The indicators are : 
-1. Academic achievement status measured by state assessments
-2. Academic growth
-3. Assessment participation rate
-4. Chronic absenteeism
-5. Postsecondary preparation - coursework
-6. Postsecondary readiness – exams and college credit
-7. Graduation – on track in ninth grade
-8. Graduation – four-year adjusted cohort graduation rate – all students
-9. Graduation – six-year adjusted cohort graduation rate – high needs
-10. Postsecondary entrance rate – all students (college enrollment)
-11. Physical fitness
-12. Arts access
+The [Next Generation Accounability System](https://data.ct.gov/Education/Next-Generation-Accountability-System/h28j-iix5/about_data) is published annually by Connecticut and is a set of 12 indicators used to rate how well a school or district is preparing students for careers or college. The indicators are : 
+- Academic achievement status measured by state assessments
+- Academic growth
+- Assessment participation rate
+- Chronic absenteeism
+- Postsecondary preparation - coursework
+- Postsecondary readiness – exams and college credit
+- Graduation – on track in ninth grade
+- Graduation – four-year adjusted cohort graduation rate – all students
+- Graduation – six-year adjusted cohort graduation rate – high needs
+- Postsecondary entrance rate – all students (college enrollment)
+- Physical fitness
+- Arts access
 
 Most of the indicators are broken down further between high need and non-high need students. 
 
