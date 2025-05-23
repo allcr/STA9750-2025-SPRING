@@ -1,0 +1,106 @@
+---
+title: "Understanding the Drivers of Real Estate Prices in Connecticut"
+author: Craig Allen, Jocely Lopez Luna, Hong Zhuang
+
+bibliography: /home/craig/Classes/STA9750-2025-SPRING/bib.bib
+embed-resources: true
+---
+
+
+ 
+# Motivation and Importance 
+A home is the single most expensive purchase a person will make. Understanding the factors that cause housing prices to differ across locations is important for the home buyer looking to start a household, and for governments and private developers desiring to improve the quality and quantity of housing available. We have chosen to focus on the state of Connecticut to review the dynamics within its housing market. 
+
+# Data Sources and Limitations
+
+The Connecticut Real Estate Sales dataset^[@ctrealesales2025] is a comprehensive collection of all real estate transactions over $2,000 between 2001 and 2022 compiled by Connecticut’s Office of Policy and Management (CT OPM). Each record includes the town, property address, date of sale, property type (residential, apartment, etc.), sale price, and property assessment. The size and level of detail in this dataset make it the backbone of our analysis.
+
+## Economic indicators
+
+In addition to the Real Estate Sales dataset, CT OPM maintains the Municipal Fiscal Indicators dataset^[@ct_mfi_2011_2015; @ct_mfi_2007_2012; @ct_mfi_2007_2011;@ct_mfi_2003_2007;@ct_mfi_2024], which provides financial and demographic information for all 169 municipalities. The data reflects a municipality’s overall financial condition, reporting indicators such as total taxes collected, total debt service, and total expenditures. Paired with real estate sales data, it helps us explore how local fiscal health influences Connecticut’s housing market.
+
+The U.S. Bureau of Economic Analysis (BEA) publishes datasets containing detailed information on GDP^[@beagdp2023] and personal income^[@bea_personal_income_2023]. The Connecticut GDP dataset includes annual, county-level estimates by industry from 2001 to 2023. Combined with real estate sales data, it allows us to explore how economic output relates to housing prices. We also made use of four BEA personal income datasets: CAINC1, CAINC4, CAINC30, and CAINC91. These cover total personal income, income and employment, and gross earnings flows. Together, they give us the tools to examine how personal income trends connect to Connecticut’s housing market.
+
+The U.S. Bureau of Labor Statistics (BLS) publishes monthly Local Area (LA) unemployment data^[@bls_local_area_unemployment]. This dataset includes employed and unemployed counts. Unemployment rates are a core indicator of economic health; combining this data with the real estate sales data lets us see how labor market conditions and housing prices interact.
+
+## School Performance
+
+The Next Generation Accountability System is published annually by Connecticut. It is a set of 12 indicators used to rate how well a school or district is performing. These indicators are then used to create a final score for the school/district: the Accountability Index.
+
+The school performance data is limited as 2019 and 2020 are not included in the 2014-2022 data set. There is also no information as of writing for years post 2022. 
+
+
+## Geographical Factors 
+
+We also used Connecticut Shapefiles, which can be obtained in R `tigris` package; Metro-North Stops, and CTtransit Data. The Metro-North Stops dataset provides stop longitude and latitude, which we used to compute distances. The CT transit data provides trip-level granular information, including stop sequences, their corresponding geographical coordinates, and the distance traveled between stops.
+
+Some limitations we faced include incorrect mappings of property addresses to geographical coordinates, and approximately 700,000 properties had missing coordinate values. We addressed these challenges by imputing missing data using matching street names and town information to improve location accuracy.
+
+# Analytic Approach
+
+## Economic Indicators
+
+We begin our investigation of the economic factors by interpreting the scatterplots of several key predictors against the median home sale price of a county in a given year. Several scatterplots show strong positive correlations, as pictured below.
+![](per_capita_gdp_vs_median_sale_price.png)
+We selected 11 predictors to Box-Cox transform and include in a random forest regression model. A backwards elimination algorithm removed the 4 least important predictors to produce the final random forest regression model with a test set $R^2 = 0.8981$. The final economic predictors in order from most to least important are pictured below. 
+![](variable_importance.png)
+
+## School Performance
+
+Several approaches were used for the analysis.  The first was to categorize schools and districts into low, medium, and high housing price tiers in a method inspired by [@case_schiller].   These were then used to explore which components of the Accountability Index have the strongest influence on the pricing tier. The second was to use linear regression methods to determine which constituents were the strongest predictors of the housing prices. Results from the individual school tests are exploratory and we will make determinations based on the school district results. 
+
+
+## Geographical Factors 
+To examine how geographical factors influence real estate pricing in Connecticut, we focused on two key elements, proximity to the economic center-New York City-and accessibility to public transit. We measured proximity by calculating the distance from each property to Grand Central Terminal and computed the distance to the nearest Metro-North station to assess public transit accessibility. Based on the distances, we examined whether the mean property prices across different distance bins were statistically significant and how varying levels of accessibility to Metro-North stations were reflected in property values.
+
+# Key Findings
+
+## Economic Factors
+
+The following partial dependence plot reveals how individual covariates affect the predictions of median real estate prices–an important piece of information often occulted by the black-box nature of random forest regression models.
+
+![](pdp_grid.png)
+As expected, higher per capita personal income, proportion of income from dividends, proportion of income from property, and per-capita property tax revenues are associated with greater predicted median sale prices. Higher proportions of income from self-employment are associated with higher predicted median sales prices. Per capita annual debt service is positively associated with sale price predictions. This is sensible, if we consider annual debt service a proxy for investment in local infrastructure that, with time, increases property values. 
+
+On the other hand, shares of retirement income and unemployment income both have a slightly inverse relationship with housing prices, potentially reflecting the limited spending power of the aging and unemployed. These patterns align with economic theory and suggest that both income composition and fiscal strength at the county level meaningfully influence Connecticut’s real estate market. 
+
+## School Performance
+
+
+The school district level variable importance plot from the classification tool shows an interesting pattern where academic achievement and attendance were the strongest predictors of a town’s home pricing tier. To the reviewer, the influence of attendance should not be taken lightly, even though it is not the strongest of the variables. It is possible that test scores of a school will likely improve as more students consistently attend classes and also that students in lower socioeconomic brackets may face more hurdles in attending school regularly. Policies that increase school attendance will likely show an improvement in school performance and eventually improve the educational achievement of students.
+
+![](random_forest_importance.png)
+
+
+The results from the linear regression methods showed agreement that post secondary education readiness was the strongest predictor of housing prices of all of the constituents of the Accountability index. The first analysis used backward stepwise regression and the second used only the post secondary readiness and dummy variables for the year. The highest  $R_{adj}^2$  value was for using only the post secondary readiness and the dummy variable for the year at $R_{adj}^2$ = 0.6159. 
+
+## Geographic Factors
+Fairfield County stands out with the highest average increase in single-family home values, rising by approximately $169,000 between 2001 and 2022. This growth is more than double the appreciation seen in Middlesex and Litchfield counties, and over three times greater than in Hartford County. This substantial increase underscores Fairfield’s market strength. It also reinforces the pattern of declining price growth and increasing distance from New York City.
+
+![](property.png)
+
+
+According to the Metro-North railroad and CT transit bus data sets, Hartford town has the highest number of bus stops among all Connecticut towns, with 993 stops connecting to 69 other towns. In contrast, New Haven town offers direct access to the Metro-North rail line, with approximately 62.69% of properties located 3-5 minutes by car from a train station. These contrasting transit dynamics are clearly mirrored in property values. Across multiple property types, New Haven consistently commands higher prices than Hartford: on average, single-family homes are 41.63% more expensive, three-family homes are 32.81% higher, and two-family homes command a 17.63% premium. These patterns suggest that access to commuter rail significantly influences real estate demand and pricing power.
+
+
+![](average_property_prices.png)
+
+# Relation to Prior Work
+
+Previous research highlights the significant role macro-economic indicators play in shaping housing prices, though their effects often vary depending on the geographic scale and regional context. For example, [@zhang2024macro] finds that at the national level in the U.S., increases in GDP are generally associated with rising housing prices, while higher federal tax rates tend to suppress price growth. However, [@martin2023local] emphasizes that state-level housing markets frequently diverge from these broad national patterns due to localized economic conditions, policy differences, and demographic factors. Our analysis focused on county-level economic data in Connecticut supports the general trends observed in [@zhang2024macro]. 
+
+Public education within the United States is primarily funded by property taxes, which are relative to the assessed value of a home in a municipality. The amount of funding a school district receives has a significant relationship to the lifetime academic achievement of the student. Furthermore,  [@gardner2023relationship] shows that a larger portion of students in schools with low funding fail to meet or exceed education standards than students in well funded schools. The breakdown of the Accountability Index may help guide which areas should be focused on to improve the long term socioeconomic standing of the student and the district itself. 
+
+The study [@debrezion2007impact] provides a comprehensive examination of how proximity to railway stations influences property values. The meta-analysis reveals a generally positive relationship between proximity to railway stations and property values. They found that properties located close to stations tend to command higher prices, and commercial properties often exhibit a more pronounced increase in value. Our analysis compared the impact of direct accessibility to the Metro-North Railroad with that of more localized bus transit and we found that accessibility to rail stations had a significantly greater impact on property values than accessibility to local bus transit. Residential properties with direct access to rail stations and proximity to the economic center tend to be more expensive than those with only direct access to local bus transit.
+
+# Next Steps and Future Directions
+
+Future work should be done to ensure that the effect of the local economy on local housing prices is partitioned from the effect of the national economy. In addition, further model refinement should be carried out, including the testing of higher order regression models and mixed effects models. 
+
+Mixed effect models can be utilized to more accurately account for the impact of differences between school districts and years. The models could also be made more accurate if the complete set of housing values were available at the town level rather than only sales. Only a certain amount of homes in an area are on sale at any given moment.
+
+To further investigate the geographical impact on real estate pricing, we are interested in applying network theory to model the connectivity among towns. This approach may offer insights into whether structural or regional linkages contribute to the spatial distribution of property values across Connecticut.
+
+Aside from these focused enhancements, future work should include consolidating the three spheres of influence on Connecticut’s real estate housing prices into one comprehensive model.
+References and Links
+For a more technical analysis of the [economic](https://jlopez-6.github.io/STA9750-2025-SPRING/individual_report.html), [school performance](https://allcr.github.io/STA9750-2025-SPRING/education_reconciliation.html), and [public transit](https://hongzhuang1.github.io/STA9750-2025-SPRING/final_project.html) factors that drive Connecticut’s real estate market, visit the linked pages. 
