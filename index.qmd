@@ -6,8 +6,8 @@ listing:
     sort-ui: false
     filter-ui: false
     contents:
-        - "mp*.qmd"
         - "edu*.qmd"
+        - 'group_report.qmd'
 page-layout: full
 title-block-banner: true
 ---
